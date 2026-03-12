@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: backend-runtime
+    container_name: devtools-backend
+    restart: unless-stopped
+    environment:
+      - AI_API_BASE_URL=${AI_API_BASE_URL:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - BACKEND_PORT=3001
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - devtools
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: frontend-runtime
+    container_name: devtools-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    networks:
+      - devtools
+
+volumes:
+  backend-data:
+
+networks:
+  devtools:
+    driver: bridge
