@@ -62,8 +62,7 @@ function getLanguageFromName(name: string): string {
   const parts = name.split('-')
   if (parts.length <= 2) return name
   const last = parts[parts.length - 1]
-  const isNeural = last.endsWith('Neural')
-  if (!isNeural) return name
+  if (!last?.endsWith('Neural')) return name
   return parts.slice(0, -1).join('-')
 }
 
@@ -142,7 +141,8 @@ async function loadVoiceList() {
       selectedGender.value = 'Female'
       voice.value = 'zh-CN-XiaoxiaoNeural'
     } else if (filteredVoiceList.value.length && !filteredVoiceList.value.some((v) => v.value === voice.value)) {
-      voice.value = filteredVoiceList.value[0].value
+      const first = filteredVoiceList.value[0]
+      if (first) voice.value = first.value
     }
   } catch (e) {
     toast.error(e instanceof Error ? e.message : '获取音色列表失败')
@@ -152,7 +152,8 @@ async function loadVoiceList() {
 watch([selectedLanguage, selectedGender], () => {
   const list = filteredVoiceList.value
   const currentInList = list.some((v) => v.value === voice.value)
-  if (list.length && !currentInList) voice.value = list[0].value
+  const first = list[0]
+  if (list.length && !currentInList && first) voice.value = first.value
 })
 
 async function generate() {
