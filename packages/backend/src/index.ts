@@ -21,6 +21,7 @@ import express from 'express'
 import cors from 'cors'
 import { aiRouter } from './routes/ai.js'
 import { notesRouter } from './routes/notes.js'
+import { wishesRouter } from './routes/wishes.js'
 import { dictionaryRouter } from './routes/dictionary.js'
 
 const app = express()
@@ -35,6 +36,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/ai', aiRouter)
 app.use('/api/notes', notesRouter)
+app.use('/api/wishes', wishesRouter)
 app.use('/api/dictionary', dictionaryRouter)
 
 app.listen(PORT, () => {

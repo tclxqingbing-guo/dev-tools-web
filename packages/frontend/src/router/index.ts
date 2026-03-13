@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
+import WishPool from '../views/WishPool.vue'
 
 const toolModules = import.meta.glob('../views/tools/*.vue')
 
@@ -15,6 +16,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomePage },
+    { path: '/wishes', name: 'wishes', component: WishPool },
     { path: '/tool/json-formatter', name: 'JsonFormatter', component: lazyTool('JsonFormatter') },
     { path: '/tool/xml-formatter', name: 'XmlFormatter', component: lazyTool('XmlFormatter') },
     { path: '/tool/url-encoder', name: 'UrlEncoder', component: lazyTool('UrlEncoder') },

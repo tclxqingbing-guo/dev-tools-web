@@ -12,16 +12,24 @@ const router = useRouter()
 <template>
   <div class="min-h-screen bg-surface">
     <header class="sticky top-0 z-40 backdrop-blur-xl bg-surface/80 border-b border-white/5">
-      <div class="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
-        <button
-          @click="router.push('/')"
-          class="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+      <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <button
+            @click="router.push('/')"
+            class="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer flex-shrink-0"
+          >
+            <ArrowLeftIcon class="w-5 h-5" />
+            <span class="text-sm font-medium hidden sm:inline">返回</span>
+          </button>
+          <div class="h-5 w-px bg-white/10 flex-shrink-0" />
+          <h1 class="text-base font-semibold text-slate-100 truncate">{{ title }}</h1>
+        </div>
+        <router-link
+          to="/wishes"
+          class="flex-shrink-0 text-sm text-slate-400 hover:text-accent transition-colors cursor-pointer"
         >
-          <ArrowLeftIcon class="w-5 h-5" />
-          <span class="text-sm font-medium hidden sm:inline">返回</span>
-        </button>
-        <div class="h-5 w-px bg-white/10" />
-        <h1 class="text-base font-semibold text-slate-100 truncate">{{ title }}</h1>
+          许愿池 | 意见箱
+        </router-link>
       </div>
     </header>
     <main class="max-w-7xl mx-auto px-6 py-6">

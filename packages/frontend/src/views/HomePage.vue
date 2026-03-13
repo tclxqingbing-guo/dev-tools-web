@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { tools, searchTools, categories, type Category, type Tool } from '../config/tools'
 import {
   MagnifyingGlassIcon,
@@ -112,7 +113,13 @@ const openTool = (tool: Tool) => {
     </div>
 
     <div class="relative max-w-7xl mx-auto px-6 py-12">
-      <header class="text-center mb-12">
+      <header class="relative text-center mb-12">
+        <RouterLink
+          to="/wishes"
+          class="absolute right-0 top-0 text-sm text-slate-400 hover:text-accent transition-colors cursor-pointer"
+        >
+          许愿池 | 意见箱
+        </RouterLink>
         <div class="flex items-center justify-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
             <WrenchIcon class="w-6 h-6 text-accent" />

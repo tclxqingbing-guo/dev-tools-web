@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import {
@@ -10,27 +10,150 @@ import {
   ArrowPathIcon,
 } from '@heroicons/vue/24/outline'
 
+const TTS_BASE = 'https://bx-tts.17usoft.com/api/v1/tts'
+const TTS_ORIGIN = 'https://bx-tts.17usoft.com'
+
 const toast = useToast()
 
-const VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'] as const
-const MODELS = ['tts-1', 'tts-1-hd'] as const
+const LANGUAGE_LABELS: Record<string, string> = {
+  'zh-CN': '中文 (简体)',
+  'zh-CN-liaoning': '中文 (辽宁)',
+  'zh-CN-shaanxi': '中文 (陕西)',
+  'zh-HK': '中文 (香港)',
+  'zh-TW': '中文 (台湾)',
+  'en-US': 'English (US)',
+  'en-GB': 'English (UK)',
+  'en-AU': 'English (AU)',
+  'en-CA': 'English (CA)',
+  'en-IN': 'English (IN)',
+  'en-IE': 'English (IE)',
+  'en-NZ': 'English (NZ)',
+  'en-SG': 'English (SG)',
+  'en-HK': 'English (HK)',
+  'en-PH': 'English (PH)',
+  'en-ZA': 'English (ZA)',
+  'en-KE': 'English (KE)',
+  'en-NG': 'English (NG)',
+  'en-TZ': 'English (TZ)',
+}
 
+const ZH_CN_VOICE_NAMES: Record<string, string> = {
+  XiaoxiaoNeural: '晓晓',
+  XiaoyiNeural: '晓伊',
+  YunjianNeural: '云健',
+  YunxiNeural: '云希',
+  YunxiaNeural: '云夏',
+  YunyangNeural: '云扬',
+  XiaobeiNeural: '晓北',
+  XiaoniNeural: '晓妮',
+}
+
+interface VoiceItem {
+  value: string
+  name: string
+}
+
+interface VoiceListRow {
+  Name: string
+  Gender: string
+}
+
+function getLanguageFromName(name: string): string {
+  const parts = name.split('-')
+  if (parts.length <= 2) return name
+  const last = parts[parts.length - 1]
+  const isNeural = last.endsWith('Neural')
+  if (!isNeural) return name
+  return parts.slice(0, -1).join('-')
+}
+
+function getVoiceDisplayName(item: VoiceListRow, langCode: string): string {
+  const name = item.Name
+  if (langCode.startsWith('zh-CN')) {
+    const parts = name.split('-')
+    const lastPart = parts[parts.length - 1]
+    const zh = ZH_CN_VOICE_NAMES[lastPart as keyof typeof ZH_CN_VOICE_NAMES]
+    if (zh) return `${langCode}-${zh}`
+  }
+  const match = name.match(/([A-Za-z]+)Neural$/)
+  return match ? `${langCode}-${match[1]}` : name
+}
+
+const voiceListRaw = ref<VoiceListRow[]>([])
 const text = ref('')
-const voice = ref<(typeof VOICES)[number]>('nova')
+const selectedLanguage = ref('zh-CN')
+const selectedGender = ref<'all' | 'Male' | 'Female'>('Female')
+const voice = ref('zh-CN-XiaoxiaoNeural')
 const speed = ref(1.0)
-const model = ref<(typeof MODELS)[number]>('tts-1')
 const loading = ref(false)
 const audioUrl = ref<string | null>(null)
 const isPlaying = ref(false)
 
+const languageOptions = computed(() => {
+  const set = new Set(voiceListRaw.value.map((r) => getLanguageFromName(r.Name)))
+  const list = Array.from(set).sort().map((code) => ({
+    value: code,
+    label: LANGUAGE_LABELS[code] ?? code,
+  }))
+  return [{ value: '', label: '全部' }, ...list]
+})
+
+const filteredVoiceList = computed(() => {
+  let list = voiceListRaw.value
+  if (selectedLanguage.value) {
+    list = list.filter((r) => getLanguageFromName(r.Name) === selectedLanguage.value)
+  }
+  if (selectedGender.value !== 'all') {
+    list = list.filter((r) => r.Gender === selectedGender.value)
+  }
+  const lang = selectedLanguage.value || 'en-US'
+  return list.map((r) => ({
+    value: r.Name,
+    name: getVoiceDisplayName(r, getLanguageFromName(r.Name)),
+  }))
+})
+
 let audioElement: HTMLAudioElement | null = null
 
 function revokePreviousUrl() {
-  if (audioUrl.value) {
+  if (audioUrl.value?.startsWith('blob:')) {
     URL.revokeObjectURL(audioUrl.value)
-    audioUrl.value = null
+  }
+  audioUrl.value = null
+}
+
+function formatRate(): string {
+  const n = Math.round((speed.value - 1) * 100)
+  return `${n}%`
+}
+
+async function loadVoiceList() {
+  try {
+    const res = await fetch(`${TTS_BASE}/voiceList`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error('获取音色列表失败')
+    const json = await res.json()
+    voiceListRaw.value = json?.data ?? []
+    const hasXiaoxiao = voiceListRaw.value.some((r) => r.Name === 'zh-CN-XiaoxiaoNeural')
+    if (voiceListRaw.value.length && hasXiaoxiao) {
+      selectedLanguage.value = 'zh-CN'
+      selectedGender.value = 'Female'
+      voice.value = 'zh-CN-XiaoxiaoNeural'
+    } else if (filteredVoiceList.value.length && !filteredVoiceList.value.some((v) => v.value === voice.value)) {
+      voice.value = filteredVoiceList.value[0].value
+    }
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : '获取音色列表失败')
   }
 }
+
+watch([selectedLanguage, selectedGender], () => {
+  const list = filteredVoiceList.value
+  const currentInList = list.some((v) => v.value === voice.value)
+  if (list.length && !currentInList) voice.value = list[0].value
+})
 
 async function generate() {
   const inputText = text.value.trim()
@@ -38,30 +161,36 @@ async function generate() {
     toast.warning('请输入要转换的文字')
     return
   }
+  if (!voice.value) {
+    toast.warning('请选择音色')
+    return
+  }
 
   loading.value = true
   revokePreviousUrl()
 
   try {
-    const res = await fetch('/api/ai/tts', {
+    const res = await fetch(`${TTS_BASE}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/plain, */*' },
       body: JSON.stringify({
-        model: model.value,
+        text: inputText,
         voice: voice.value,
-        input: inputText,
-        speed: speed.value,
+        rate: formatRate(),
+        pitch: '0Hz',
+        volume: '0%',
       }),
     })
 
+    const json = await res.json().catch(() => ({}))
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }))
-      throw new Error(err.message || '生成失败')
+      throw new Error((json as { message?: string }).message || '生成失败')
     }
-
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    audioUrl.value = url
+    if (!json?.success || !json?.data?.audio) {
+      throw new Error(json?.message || '生成失败')
+    }
+    const path = (json.data.audio as string).replace(/^\//, '')
+    audioUrl.value = `${TTS_ORIGIN}/${path}`
     toast.success('语音合成成功')
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '生成失败'
@@ -70,6 +199,10 @@ async function generate() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  loadVoiceList()
+})
 
 function onAudioPlay() {
   isPlaying.value = true
@@ -120,21 +253,36 @@ onUnmounted(() => {
         <h3 class="text-slate-100 font-medium mb-4">语音配置</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">音色</label>
+            <label class="text-slate-500 text-sm font-medium block mb-2">语言</label>
             <select
-              v-model="voice"
+              v-model="selectedLanguage"
               class="glass-input w-full px-4 py-2 cursor-pointer"
+              :disabled="!languageOptions.length"
             >
-              <option v-for="v in VOICES" :key="v" :value="v">{{ v }}</option>
+              <option v-for="opt in languageOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
             </select>
           </div>
           <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">模型</label>
+            <label class="text-slate-500 text-sm font-medium block mb-2">性别</label>
             <select
-              v-model="model"
+              v-model="selectedGender"
               class="glass-input w-full px-4 py-2 cursor-pointer"
             >
-              <option v-for="m in MODELS" :key="m" :value="m">{{ m }}</option>
+              <option value="all">全部</option>
+              <option value="Male">男</option>
+              <option value="Female">女</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-slate-500 text-sm font-medium block mb-2">语音</label>
+            <select
+              v-model="voice"
+              class="glass-input w-full px-4 py-2 cursor-pointer"
+              :disabled="!filteredVoiceList.length"
+            >
+              <option v-for="v in filteredVoiceList" :key="v.value" :value="v.value">{{ v.name }}</option>
             </select>
           </div>
           <div class="md:col-span-2">
