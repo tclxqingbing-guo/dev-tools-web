@@ -11,7 +11,7 @@ services:
       - AI_API_KEY=${AI_API_KEY:-}
       - BACKEND_PORT=3001
     volumes:
-      - backend-data:/app/data
+      - /opt/data/dev_tools:/app/data
     networks:
       - devtools
 
@@ -23,7 +23,7 @@ services:
     container_name: devtools-frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_PORT:-8866}:80"
     depends_on:
       - backend
     networks:

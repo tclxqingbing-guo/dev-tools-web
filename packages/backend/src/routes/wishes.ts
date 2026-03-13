@@ -57,7 +57,7 @@ wishesRouter.get('/', async (req, res) => {
       sql = `SELECT * FROM wishes WHERE type = '${type}' ORDER BY created_at DESC`
     }
     const result = database.exec(sql)
-    const rows = (result[0]?.values ?? []).map((v) => ({
+    const rows = (result[0]?.values ?? []).map((v: unknown[]) => ({
       id: v[0],
       type: v[1],
       content: v[2],
@@ -85,7 +85,7 @@ wishesRouter.get('/:id', async (req, res) => {
     }
     const wish = { id: wishRow[0], type: wishRow[1], content: wishRow[2], created_at: wishRow[3] }
     const commentResult = database.exec(`SELECT * FROM wish_comments WHERE wish_id = ${id} ORDER BY created_at ASC`)
-    const comments = (commentResult[0]?.values ?? []).map((v) => ({
+    const comments = (commentResult[0]?.values ?? []).map((v: unknown[]) => ({
       id: v[0],
       wish_id: v[1],
       content: v[2],

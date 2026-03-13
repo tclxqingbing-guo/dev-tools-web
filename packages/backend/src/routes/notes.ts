@@ -45,13 +45,13 @@ notesRouter.get('/', async (_req, res) => {
   try {
     const database = await getDb()
     const result = database.exec('SELECT * FROM notes ORDER BY updated_at DESC')
-    const rows = result[0]?.values?.map((v) => ({
+    const rows = (result[0]?.values ?? []).map((v: unknown[]) => ({
       id: v[0],
       title: v[1],
       content: v[2],
       created_at: v[3],
       updated_at: v[4],
-    })) ?? []
+    }))
     res.json(rows)
   } catch (e) {
     res.status(500).json({ message: (e as Error).message })
