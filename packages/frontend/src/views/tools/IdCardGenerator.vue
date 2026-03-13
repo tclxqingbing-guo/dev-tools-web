@@ -3,59 +3,59 @@ import { ref, computed, watch } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { IdentificationIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '../../composables/useToast'
+import { provinces, cities } from '../../data/areaData'
 
 const toast = useToast()
 
-const REGIONS: Record<string, string[]> = {
-  '110000': ['北京市'],
-  '110100': ['东城区', '西城区', '朝阳区', '丰台区', '石景山区', '海淀区', '门头沟区', '房山区', '通州区', '顺义区', '昌平区', '大兴区', '怀柔区', '平谷区', '密云区', '延庆区'],
-  '310000': ['上海市'],
-  '310100': ['黄浦区', '徐汇区', '长宁区', '静安区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区', '嘉定区', '浦东新区', '金山区', '松江区', '青浦区', '奉贤区', '崇明区'],
-  '440000': ['广东省'],
-  '440100': ['广州市'],
-  '440300': ['深圳市'],
-  '440600': ['佛山市'],
-  '510000': ['四川省'],
-  '510100': ['成都市'],
-  '510300': ['自贡市'],
-  '330000': ['浙江省'],
-  '330100': ['杭州市'],
-  '330200': ['宁波市'],
-  '330300': ['温州市'],
+type AreaItem = { cityId: string; cityName: string }
+
+function flattenAreas(arr: unknown[]): AreaItem[] {
+  const result: AreaItem[] = []
+  for (const item of arr) {
+    if (item && typeof item === 'object' && 'cityId' in item && 'cityName' in item) {
+      result.push({ cityId: (item as AreaItem).cityId, cityName: (item as AreaItem).cityName })
+    } else if (item && typeof item === 'object') {
+      for (const key of Object.keys(item as object)) {
+        const val = (item as Record<string, unknown>)[key]
+        if (Array.isArray(val)) result.push(...flattenAreas(val))
+      }
+    }
+  }
+  return result
 }
 
-const provinceOptions = [
-  { code: '110000', name: '北京' },
-  { code: '310000', name: '上海' },
-  { code: '440000', name: '广东' },
-  { code: '510000', name: '四川' },
-  { code: '330000', name: '浙江' },
-]
-
-const cityMap: Record<string, { code: string; name: string }[]> = {
-  '110000': [{ code: '110100', name: '北京市' }],
-  '310000': [{ code: '310100', name: '上海市' }],
-  '440000': [
-    { code: '440100', name: '广州市' },
-    { code: '440300', name: '深圳市' },
-    { code: '440600', name: '佛山市' },
-  ],
-  '510000': [
-    { code: '510100', name: '成都市' },
-    { code: '510300', name: '自贡市' },
-  ],
-  '330000': [
-    { code: '330100', name: '杭州市' },
-    { code: '330200', name: '宁波市' },
-    { code: '330300', name: '温州市' },
-  ],
+function shortenProvinceName(name: string): string {
+  return name
+    .replace(/省$/, '')
+    .replace(/市$/, '')
+    .replace(/自治区$/, '')
+    .replace(/特别行政区$/, '')
 }
+
+const provinceOptions: { code: string; name: string }[] = []
+const cityMap: Record<string, { code: string; name: string }[]> = {}
+
+for (const provinceName of provinces) {
+  const arr = cities[provinceName as keyof typeof cities]
+  if (!Array.isArray(arr)) continue
+  const all = flattenAreas(arr)
+  const provinceEntry = all.find((e) => e.cityId.endsWith('0000')) ?? all[0]
+  if (!provinceEntry) continue
+  provinceOptions.push({
+    code: provinceEntry.cityId,
+    name: shortenProvinceName(provinceEntry.cityName),
+  })
+  cityMap[provinceEntry.cityId] = all.map((e) => ({ code: e.cityId, name: e.cityName }))
+}
+
+const firstProvinceCode = provinceOptions[0]?.code ?? '110000'
+const firstCityCode = cityMap[firstProvinceCode]?.[0]?.code ?? '110100'
 
 const WEIGHTS = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
 const CHECK_CODES = '10X98765432'
 
-const province = ref('110000')
-const city = ref('110100')
+const province = ref(firstProvinceCode)
+const city = ref(firstCityCode)
 const gender = ref<'male' | 'female'>('male')
 const ageMin = ref(25)
 const ageMax = ref(45)
