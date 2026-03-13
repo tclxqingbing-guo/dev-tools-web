@@ -11,13 +11,13 @@ export default {
       },
       colors: {
         surface: {
-          DEFAULT: '#0F172A',
-          card: '#1E293B',
-          hover: '#334155',
+          DEFAULT: '#F5F5F7',
+          card: '#FFFFFF',
+          hover: '#E8E8ED',
         },
         accent: {
-          DEFAULT: '#22C55E',
-          hover: '#16A34A',
+          DEFAULT: '#5E6B7A',
+          hover: '#4B5763',
         },
       },
     },

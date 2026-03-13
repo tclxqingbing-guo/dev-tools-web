@@ -125,7 +125,7 @@ onMounted(fetchNotes)
   <ToolLayout title="笔记本">
     <div class="flex h-[calc(100vh-7rem)] gap-4">
       <div class="w-72 flex flex-col glass-card p-0 overflow-hidden flex-shrink-0">
-        <div class="p-3 border-b border-white/5">
+        <div class="p-3 border-b border-slate-200">
           <div class="relative mb-2">
             <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
@@ -148,7 +148,7 @@ onMounted(fetchNotes)
             :key="note.id"
             @click="selectNote(note)"
             :class="[
-              'p-3 border-b border-white/5 cursor-pointer transition-colors hover:bg-white/5',
+              'p-3 border-b border-slate-200 cursor-pointer transition-colors hover:bg-slate-100',
               currentNote?.id === note.id ? 'bg-accent/10' : ''
             ]"
           >
@@ -168,10 +168,10 @@ onMounted(fetchNotes)
 
       <div class="flex-1 glass-card p-0 overflow-hidden flex flex-col">
         <template v-if="currentNote">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
             <input
               v-model="currentNote.title"
-              class="text-lg font-semibold bg-transparent border-none outline-none text-slate-100 placeholder:text-slate-500 flex-1"
+              class="text-lg font-semibold bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-500 flex-1"
               placeholder="笔记标题..."
             />
             <div class="flex items-center gap-2">

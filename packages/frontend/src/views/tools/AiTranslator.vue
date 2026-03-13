@@ -221,7 +221,7 @@ function outputCharCount(): number {
               v-model="outputText"
               placeholder="翻译结果..."
               readonly
-              class="glass-input flex-1 min-h-[200px] p-3 resize-none bg-white/5 cursor-default"
+              class="glass-input flex-1 min-h-[200px] p-3 resize-none bg-slate-100 cursor-default"
             />
           </div>
         </div>

@@ -50,7 +50,7 @@ export const useApi = () => {
           const content = parsed.choices?.[0]?.delta?.content
           if (content) onChunk(content)
         } catch {
-          onChunk(data)
+          // Skip malformed or incomplete SSE lines; do not append raw JSON to result
         }
       }
     }

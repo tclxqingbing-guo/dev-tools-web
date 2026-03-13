@@ -150,7 +150,7 @@ async function copyName(name: string) {
         class="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         <div class="glass-card p-4">
-          <h3 class="text-slate-100 font-medium mb-3">camelCase</h3>
+          <h3 class="text-slate-800 font-medium mb-3">camelCase</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.camel"
@@ -169,7 +169,7 @@ async function copyName(name: string) {
           </ul>
         </div>
         <div class="glass-card p-4">
-          <h3 class="text-slate-100 font-medium mb-3">snake_case</h3>
+          <h3 class="text-slate-800 font-medium mb-3">snake_case</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.snake"
@@ -188,7 +188,7 @@ async function copyName(name: string) {
           </ul>
         </div>
         <div class="glass-card p-4">
-          <h3 class="text-slate-100 font-medium mb-3">PascalCase</h3>
+          <h3 class="text-slate-800 font-medium mb-3">PascalCase</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.pascal"

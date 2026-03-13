@@ -79,7 +79,7 @@ function copyGenerated() {
   <ToolLayout title="护照号生成验证">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">校验护照号</h3>
+        <h3 class="text-slate-800 font-medium mb-4">校验护照号</h3>
         <p class="text-slate-500 text-sm mb-2">支持格式：E+8数字、E+字母+7数字、G+8数字</p>
         <div class="flex gap-3">
           <input
@@ -95,7 +95,7 @@ function copyGenerated() {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">生成</h3>
+        <h3 class="text-slate-800 font-medium mb-4">生成</h3>
         <div class="flex gap-4 items-end">
           <div>
             <label class="block text-slate-500 text-sm mb-2">数量</label>
@@ -110,7 +110,7 @@ function copyGenerated() {
 
       <div v-if="generatedPassports.length > 0" class="glass-card p-5">
         <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-100 font-medium">生成结果</h3>
+          <h3 class="text-slate-800 font-medium">生成结果</h3>
           <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制

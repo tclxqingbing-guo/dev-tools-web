@@ -251,7 +251,7 @@ onUnmounted(() => {
   <ToolLayout title="TTS 语音合成">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">语音配置</h3>
+        <h3 class="text-slate-800 font-medium mb-4">语音配置</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="text-slate-500 text-sm font-medium block mb-2">语言</label>
@@ -296,7 +296,7 @@ onUnmounted(() => {
               min="0.25"
               max="4"
               step="0.05"
-              class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/10 accent-accent"
+              class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-200 accent-accent"
             />
           </div>
         </div>
@@ -307,7 +307,7 @@ onUnmounted(() => {
         <textarea
           v-model="text"
           placeholder="输入要转换为语音的文字..."
-          class="glass-input w-full min-h-[160px] p-4 text-slate-100 placeholder:text-slate-500 resize-y"
+          class="glass-input w-full min-h-[160px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
         />
       </div>
 
@@ -327,7 +327,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="audioUrl" class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">播放与下载</h3>
+        <h3 class="text-slate-800 font-medium mb-4">播放与下载</h3>
         <audio
           id="tts-audio"
           :src="audioUrl"

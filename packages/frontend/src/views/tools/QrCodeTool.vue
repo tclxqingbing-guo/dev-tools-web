@@ -153,7 +153,7 @@ onUnmounted(() => {
           />
         </div>
         <div class="glass-card p-5">
-          <h3 class="text-slate-100 font-medium mb-4">自定义</h3>
+          <h3 class="text-slate-800 font-medium mb-4">自定义</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label class="block text-slate-500 text-sm mb-2">尺寸</label>
@@ -162,14 +162,14 @@ onUnmounted(() => {
             <div>
               <label class="block text-slate-500 text-sm mb-2">深色</label>
               <div class="flex gap-2">
-                <input v-model="darkColor" type="color" class="w-12 h-10 rounded cursor-pointer bg-white/5" />
+                <input v-model="darkColor" type="color" class="w-12 h-10 rounded cursor-pointer bg-slate-100" />
                 <input v-model="darkColor" type="text" class="glass-input px-4 py-3 flex-1" />
               </div>
             </div>
             <div>
               <label class="block text-slate-500 text-sm mb-2">浅色</label>
               <div class="flex gap-2">
-                <input v-model="lightColor" type="color" class="w-12 h-10 rounded cursor-pointer bg-white/5" />
+                <input v-model="lightColor" type="color" class="w-12 h-10 rounded cursor-pointer bg-slate-100" />
                 <input v-model="lightColor" type="text" class="glass-input px-4 py-3 flex-1" />
               </div>
             </div>
@@ -197,7 +197,7 @@ onUnmounted(() => {
 
       <div v-if="mode === 'decode'" class="space-y-6">
         <div
-          class="glass-card p-5 border-2 border-dashed border-white/10 hover:border-white/20 cursor-pointer transition-colors"
+          class="glass-card p-5 border-2 border-dashed border-slate-200 hover:border-slate-300 cursor-pointer transition-colors"
           @click="decodeInput?.click()"
         >
           <input
@@ -213,7 +213,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div v-if="pastedImage" class="glass-card p-5 flex gap-6">
-          <img :src="pastedImage" class="max-h-48 rounded-lg object-contain bg-white/5" />
+          <img :src="pastedImage" class="max-h-48 rounded-lg object-contain bg-slate-100" />
           <div class="flex-1">
             <label class="block text-slate-500 text-sm mb-2">解码结果</label>
             <div v-if="decodedText" class="flex gap-2">

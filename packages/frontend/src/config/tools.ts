@@ -203,16 +203,6 @@ export const tools: Tool[] = [
     usageScore: 7,
   },
   {
-    name: '英汉词典',
-    icon: 'BookOpenIcon',
-    description: '英汉词典查询',
-    route: '/tool/translator',
-    component: 'Translator',
-    keywords: ['词典', 'dictionary', '翻译', '英汉', '单词'],
-    category: '实用工具',
-    usageScore: 8,
-  },
-  {
     name: '二维码工具',
     icon: 'QrCodeIcon',
     description: '二维码生成与解码，支持自定义样式',

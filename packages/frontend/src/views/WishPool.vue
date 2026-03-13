@@ -125,16 +125,16 @@ onMounted(() => fetchList())
 
 <template>
   <div class="min-h-screen bg-surface">
-    <header class="sticky top-0 z-40 backdrop-blur-xl bg-surface/80 border-b border-white/5">
+    <header class="sticky top-0 z-40 backdrop-blur-xl bg-surface/80 border-b border-slate-200">
       <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
         <button
           @click="router.push('/')"
-          class="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+          class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
         >
           <ArrowLeftIcon class="w-5 h-5" />
           <span class="text-sm font-medium hidden sm:inline">返回</span>
         </button>
-        <h1 class="text-base font-semibold text-slate-100 truncate">许愿池 | 意见箱</h1>
+        <h1 class="text-base font-semibold text-slate-800 truncate">许愿池 | 意见箱</h1>
         <div class="w-16" />
       </div>
     </header>
@@ -143,7 +143,7 @@ onMounted(() => fetchList())
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-1 space-y-4">
           <div class="glass-card p-5">
-            <h3 class="text-slate-100 font-medium mb-4">提交诉求</h3>
+            <h3 class="text-slate-800 font-medium mb-4">提交诉求</h3>
             <div class="space-y-3">
               <div>
                 <label class="text-slate-500 text-sm font-medium block mb-2">类型</label>
@@ -154,7 +154,7 @@ onMounted(() => fetchList())
                       'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors',
                       formType === 'wish'
                         ? 'bg-accent text-white'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
                     ]"
                     @click="formType = 'wish'"
                   >
@@ -167,7 +167,7 @@ onMounted(() => fetchList())
                       'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors',
                       formType === 'problem'
                         ? 'bg-accent text-white'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
                     ]"
                     @click="formType = 'problem'"
                   >
@@ -181,7 +181,7 @@ onMounted(() => fetchList())
                 <textarea
                   v-model="formContent"
                   placeholder="描述你的需求或反馈..."
-                  class="glass-input w-full min-h-[100px] p-3 text-slate-100 placeholder:text-slate-500 resize-y text-sm"
+                  class="glass-input w-full min-h-[100px] p-3 text-slate-800 placeholder:text-slate-500 resize-y text-sm"
                 />
               </div>
               <button
@@ -200,7 +200,7 @@ onMounted(() => fetchList())
             <button
               :class="[
                 'flex-1 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors',
-                filterType === 'all' ? 'bg-accent text-white' : 'bg-white/5 text-slate-400 hover:text-slate-200'
+                filterType === 'all' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
               ]"
               @click="filterType = 'all'"
             >
@@ -209,7 +209,7 @@ onMounted(() => fetchList())
             <button
               :class="[
                 'flex-1 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors',
-                filterType === 'wish' ? 'bg-accent text-white' : 'bg-white/5 text-slate-400 hover:text-slate-200'
+                filterType === 'wish' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
               ]"
               @click="filterType = 'wish'"
             >
@@ -218,7 +218,7 @@ onMounted(() => fetchList())
             <button
               :class="[
                 'flex-1 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors',
-                filterType === 'problem' ? 'bg-accent text-white' : 'bg-white/5 text-slate-400 hover:text-slate-200'
+                filterType === 'problem' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
               ]"
               @click="filterType = 'problem'"
             >
@@ -229,7 +229,7 @@ onMounted(() => fetchList())
 
         <div class="lg:col-span-2 flex flex-col gap-4">
           <div class="glass-card p-5 flex-1 min-h-0">
-            <h3 class="text-slate-100 font-medium mb-4">列表</h3>
+            <h3 class="text-slate-800 font-medium mb-4">列表</h3>
             <div v-if="filteredList.length === 0" class="text-slate-500 text-sm py-8 text-center">
               暂无内容，去提交一条吧
             </div>
@@ -240,32 +240,32 @@ onMounted(() => fetchList())
                 @click="openDetail(w)"
                 :class="[
                   'p-4 rounded-lg cursor-pointer transition-colors text-left',
-                  detail?.id === w.id ? 'bg-accent/20 border border-accent/40' : 'bg-white/5 hover:bg-white/10 border border-transparent'
+                  detail?.id === w.id ? 'bg-accent/20 border border-accent/40' : 'bg-slate-100 hover:bg-slate-200 border border-transparent'
                 ]"
               >
                 <div class="flex items-center gap-2 mb-1">
                   <SparklesIcon v-if="w.type === 'wish'" class="w-4 h-4 text-amber-400 flex-shrink-0" />
                   <ExclamationCircleIcon v-else class="w-4 h-4 text-orange-400 flex-shrink-0" />
                   <span class="text-xs text-slate-500">{{ formatDate(w.created_at) }}</span>
-                  <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 text-slate-400">
+                  <span class="text-xs px-1.5 py-0.5 rounded bg-slate-200 text-slate-500">
                     {{ w.type === 'wish' ? '许愿' : '问题' }}
                   </span>
                 </div>
-                <p class="text-slate-200 text-sm line-clamp-2">{{ w.content }}</p>
+                <p class="text-slate-700 text-sm line-clamp-2">{{ w.content }}</p>
               </li>
             </ul>
           </div>
 
           <div v-if="detail" class="glass-card p-5">
-            <h3 class="text-slate-100 font-medium mb-3">详情与留言</h3>
-            <p class="text-slate-200 text-sm whitespace-pre-wrap mb-4">{{ detail.content }}</p>
+            <h3 class="text-slate-800 font-medium mb-3">详情与留言</h3>
+            <p class="text-slate-700 text-sm whitespace-pre-wrap mb-4">{{ detail.content }}</p>
             <p class="text-slate-500 text-xs mb-4">{{ formatDate(detail.created_at) }}</p>
             <div class="space-y-3">
               <div v-if="detail.comments?.length" class="space-y-2">
                 <div
                   v-for="c in detail.comments"
                   :key="c.id"
-                  class="py-2 px-3 rounded-lg bg-white/5 text-slate-300 text-sm"
+                  class="py-2 px-3 rounded-lg bg-slate-100 text-slate-600 text-sm"
                 >
                   <p class="whitespace-pre-wrap">{{ c.content }}</p>
                   <p class="text-slate-500 text-xs mt-1">{{ formatDate(c.created_at) }}</p>
@@ -276,7 +276,7 @@ onMounted(() => fetchList())
                   v-model="commentContent"
                   type="text"
                   placeholder="写一条留言..."
-                  class="glass-input flex-1 px-3 py-2 text-slate-100 placeholder:text-slate-500 text-sm"
+                  class="glass-input flex-1 px-3 py-2 text-slate-800 placeholder:text-slate-500 text-sm"
                   @keydown.enter.prevent="submitComment"
                 />
                 <button

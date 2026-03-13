@@ -156,7 +156,7 @@ function copyGenerated() {
   <ToolLayout title="身份证生成器">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">生成参数</h3>
+        <h3 class="text-slate-800 font-medium mb-4">生成参数</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label class="block text-slate-500 text-sm mb-2">省份</label>
@@ -198,7 +198,7 @@ function copyGenerated() {
 
       <div v-if="generatedIds.length > 0" class="glass-card p-5">
         <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-100 font-medium">生成结果</h3>
+          <h3 class="text-slate-800 font-medium">生成结果</h3>
           <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制
@@ -210,7 +210,7 @@ function copyGenerated() {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">校验身份证号</h3>
+        <h3 class="text-slate-800 font-medium mb-4">校验身份证号</h3>
         <div class="flex gap-3">
           <input
             v-model="validateInput"

@@ -207,8 +207,8 @@ function downloadImage() {
                 :class="[
                   'max-w-[85%] rounded-2xl px-4 py-3',
                   msg.role === 'user'
-                    ? 'bg-accent/20 text-slate-100'
-                    : 'bg-white/5 text-slate-300 border border-white/10',
+                    ? 'bg-accent/20 text-slate-800'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200',
                 ]"
               >
                 <div
@@ -301,7 +301,7 @@ function downloadImage() {
           <img
             :src="generatedImageUrl"
             alt="Generated"
-            class="max-h-96 rounded-xl border border-white/10"
+            class="max-h-96 rounded-xl border border-slate-200"
           />
           <button
             class="btn-secondary flex items-center gap-2 mt-3 cursor-pointer"

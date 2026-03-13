@@ -113,7 +113,7 @@ function applyTemplate(t: (typeof templates)[0]) {
             <button
               v-for="t in templates"
               :key="t.name"
-              class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 flex items-center gap-2 text-sm cursor-pointer transition-colors"
+              class="w-full text-left px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 text-sm cursor-pointer transition-colors"
               @click="applyTemplate(t)"
             >
               <component :is="t.icon" class="w-4 h-4 text-slate-500 flex-shrink-0" />
@@ -154,12 +154,12 @@ function applyTemplate(t: (typeof templates)[0]) {
         </div>
 
         <div class="glass-card p-4 bg-surface-card">
-          <h3 class="text-slate-100 font-medium mb-2">匹配结果</h3>
+          <h3 class="text-slate-800 font-medium mb-2">匹配结果</h3>
           <div v-if="matchResults.length > 0" class="space-y-2 mb-4">
             <div
               v-for="(r, i) in matchResults"
               :key="i"
-              class="text-sm text-slate-300 flex flex-wrap items-center gap-2"
+              class="text-sm text-slate-600 flex flex-wrap items-center gap-2"
             >
               <span class="text-slate-500">#{{ i + 1 }}</span>
               <span class="text-emerald-400 font-mono">{{ r.match }}</span>
@@ -172,9 +172,9 @@ function applyTemplate(t: (typeof templates)[0]) {
           <div v-else-if="regexPattern && testText && regexValid" class="text-slate-500 text-sm mb-4">
             未匹配到结果
           </div>
-          <h3 class="text-slate-100 font-medium mb-2">高亮输出</h3>
+          <h3 class="text-slate-800 font-medium mb-2">高亮输出</h3>
           <div
-            class="min-h-[80px] p-4 rounded-xl bg-black/30 font-mono text-sm whitespace-pre-wrap overflow-auto text-slate-300"
+            class="min-h-[80px] p-4 rounded-xl bg-black/30 font-mono text-sm whitespace-pre-wrap overflow-auto text-slate-600"
             v-html="highlightText() || (testText ? '无匹配' : '')"
           />
         </div>

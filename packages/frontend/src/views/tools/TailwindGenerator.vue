@@ -26,7 +26,7 @@ const resultClasses = ref('')
 
 const QUICK_REF: { name: string; examples: string[] }[] = [
   { name: 'spacing', examples: ['p-4', 'm-2', 'px-6', 'py-3', 'gap-4', 'space-x-2', 'rounded-lg'] },
-  { name: 'colors', examples: ['bg-slate-800', 'text-white', 'text-slate-300', 'border-white/10', 'bg-accent'] },
+  { name: 'colors', examples: ['bg-slate-800', 'text-white', 'text-slate-600', 'border-slate-200', 'bg-accent'] },
   { name: 'typography', examples: ['text-sm', 'font-medium', 'text-lg', 'leading-relaxed', 'font-mono'] },
   { name: 'layout', examples: ['flex', 'grid', 'block', 'inline-block', 'hidden', 'overflow-hidden'] },
   { name: 'flexbox', examples: ['flex flex-col', 'items-center', 'justify-between', 'flex-wrap', 'flex-1'] },
@@ -94,7 +94,7 @@ function copyResult() {
   <ToolLayout title="AI Tailwind CSS 生成器">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">输入模式</h3>
+        <h3 class="text-slate-800 font-medium mb-4">输入模式</h3>
         <div class="flex gap-2 mb-4">
           <button
             :class="[
@@ -123,7 +123,7 @@ function copyResult() {
           <textarea
             v-model="cssInput"
             placeholder="例如：&#10;.box { padding: 1rem; margin: 0.5rem; background: #334155; border-radius: 0.5rem; }"
-            class="glass-input w-full min-h-[120px] p-4 text-slate-100 placeholder:text-slate-500 font-mono text-sm resize-y"
+            class="glass-input w-full min-h-[120px] p-4 text-slate-800 placeholder:text-slate-500 font-mono text-sm resize-y"
           />
         </div>
         <div v-else class="space-y-2">
@@ -131,7 +131,7 @@ function copyResult() {
           <textarea
             v-model="textInput"
             placeholder="例如：一个带圆角、深色背景、内边距的卡片容器"
-            class="glass-input w-full min-h-[120px] p-4 text-slate-100 placeholder:text-slate-500 resize-y"
+            class="glass-input w-full min-h-[120px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
           />
         </div>
 
@@ -151,18 +151,18 @@ function copyResult() {
           @click="generate"
         >
           <SparklesIcon v-if="!loading" class="w-4 h-4" />
-          <span v-else class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span v-else class="inline-block w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" />
           {{ loading ? '生成中...' : '生成' }}
         </button>
       </div>
 
       <div v-if="resultClasses" class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4 flex items-center gap-2">
+        <h3 class="text-slate-800 font-medium mb-4 flex items-center gap-2">
           <SwatchIcon class="w-5 h-5 text-accent" />
           生成的 Tailwind 类
         </h3>
         <div class="flex gap-3 mb-4">
-          <div class="flex-1 p-4 rounded-xl bg-black/30 font-mono text-sm text-slate-300 break-all">
+          <div class="flex-1 p-4 rounded-xl bg-black/30 font-mono text-sm text-slate-600 break-all">
             {{ resultClasses }}
           </div>
           <button
@@ -177,7 +177,7 @@ function copyResult() {
           <label class="text-slate-500 text-sm font-medium block">预览</label>
           <div
             :class="resultClasses"
-            class="border border-white/10 p-4 min-h-[80px] rounded-xl"
+            class="border border-slate-200 p-4 min-h-[80px] rounded-xl"
           >
             <span class="text-slate-400 text-sm">示例内容</span>
           </div>
@@ -185,12 +185,12 @@ function copyResult() {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">Tailwind 速查</h3>
+        <h3 class="text-slate-800 font-medium mb-4">Tailwind 速查</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div
             v-for="cat in QUICK_REF"
             :key="cat.name"
-            class="p-4 rounded-xl bg-white/5 border border-white/5"
+            class="p-4 rounded-xl bg-slate-100 border border-slate-200"
           >
             <h4 class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">
               {{ cat.name }}
@@ -199,7 +199,7 @@ function copyResult() {
               <code
                 v-for="ex in cat.examples"
                 :key="ex"
-                class="px-2 py-0.5 rounded bg-white/10 text-slate-300 text-xs font-mono cursor-pointer hover:bg-accent/20 hover:text-accent"
+                class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-xs font-mono cursor-pointer hover:bg-accent/20 hover:text-accent"
                 @click="resultClasses = resultClasses ? `${resultClasses} ${ex}` : ex"
               >
                 {{ ex }}

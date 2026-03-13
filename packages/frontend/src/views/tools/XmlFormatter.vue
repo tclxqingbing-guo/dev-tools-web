@@ -225,11 +225,11 @@ function downloadFile() {
           </div>
           <label class="flex items-center gap-2 cursor-pointer">
             <input v-model="preserveComments" type="checkbox" class="rounded cursor-pointer" />
-            <span class="text-slate-400 text-sm">保留注释</span>
+            <span class="text-slate-500 text-sm">保留注释</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input v-model="sortAttributes" type="checkbox" class="rounded cursor-pointer" />
-            <span class="text-slate-400 text-sm">属性排序</span>
+            <span class="text-slate-500 text-sm">属性排序</span>
           </label>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -276,7 +276,7 @@ function downloadFile() {
             </div>
           </div>
           <pre
-            class="flex-1 min-h-[350px] overflow-auto p-4 rounded-xl bg-black/30 font-mono text-sm whitespace-pre-wrap text-slate-300"
+            class="flex-1 min-h-[350px] overflow-auto p-4 rounded-xl bg-slate-800 font-mono text-sm whitespace-pre-wrap text-slate-200"
             v-html="highlightXml(outputXml || '')"
           />
         </div>

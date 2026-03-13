@@ -234,7 +234,7 @@ onUnmounted(() => {
     <div class="space-y-6">
       <div
         class="glass-card p-5 border-2 border-dashed transition-colors cursor-pointer"
-        :class="isDragging ? 'border-accent/50 bg-accent/5' : 'border-white/10 hover:border-white/20'"
+        :class="isDragging ? 'border-accent/50 bg-accent/5' : 'border-slate-200 hover:border-slate-300'"
         @dragover.prevent="isDragging = true"
         @dragleave="isDragging = false"
         @drop="onDrop"
@@ -255,15 +255,15 @@ onUnmounted(() => {
 
       <div v-if="sourceFile" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass-card p-5">
-          <h3 class="text-slate-100 font-medium mb-3">原图</h3>
-          <img :src="sourcePreview" class="max-h-64 rounded-lg object-contain bg-white/5" />
+          <h3 class="text-slate-800 font-medium mb-3">原图</h3>
+          <img :src="sourcePreview" class="max-h-64 rounded-lg object-contain bg-slate-100" />
           <p class="text-slate-500 text-sm mt-2">{{ formatBytes(sourceFile.size) }}</p>
         </div>
         <div class="glass-card p-5">
-          <h3 class="text-slate-100 font-medium mb-3">压缩结果</h3>
+          <h3 class="text-slate-800 font-medium mb-3">压缩结果</h3>
           <div v-if="isProcessing" class="flex items-center justify-center h-48 text-slate-500">处理中...</div>
           <template v-else>
-            <img v-if="resultPreview" :src="resultPreview" class="max-h-64 rounded-lg object-contain bg-white/5" />
+            <img v-if="resultPreview" :src="resultPreview" class="max-h-64 rounded-lg object-contain bg-slate-100" />
             <p v-if="resultSize" class="text-slate-500 text-sm mt-2">
               {{ resultSize }}
               <span v-if="compressionRatio" class="text-accent">压缩 {{ compressionRatio }}</span>
@@ -273,7 +273,7 @@ onUnmounted(() => {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">设置</h3>
+        <h3 class="text-slate-800 font-medium mb-4">设置</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label class="block text-slate-500 text-sm mb-2">输出格式</label>

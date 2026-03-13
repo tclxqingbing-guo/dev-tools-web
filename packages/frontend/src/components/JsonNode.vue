@@ -38,7 +38,7 @@ const valueColorClass = computed(() => {
     boolean: 'text-amber-400 font-semibold',
     null: 'text-red-400 font-semibold italic',
   }
-  return classes[valueType.value] || 'text-slate-300'
+  return classes[valueType.value] || 'text-slate-600'
 })
 
 const displayValue = computed(() => {
@@ -65,7 +65,7 @@ const copyValue = () => {
 
 <template>
   <div class="json-node">
-    <div v-if="isObject || isArray" class="group flex items-center py-0.5 hover:bg-white/5 transition-colors" :style="{ paddingLeft: `${level * 20}px` }">
+    <div v-if="isObject || isArray" class="group flex items-center py-0.5 hover:bg-slate-100 transition-colors" :style="{ paddingLeft: `${level * 20}px` }">
       <span class="cursor-pointer select-none text-slate-500 mr-1.5 text-xs w-3.5 inline-block hover:text-accent" @click="toggle">
         {{ isExpanded ? '\u25BC' : '\u25B6' }}
       </span>
@@ -96,7 +96,7 @@ const copyValue = () => {
       <span class="w-3.5 mr-1.5" />
       <span class="font-bold text-slate-400">{{ isArray ? ']' : '}' }}</span>
     </div>
-    <div v-if="!isObject && !isArray" class="group flex items-center py-0.5 hover:bg-white/5 transition-colors" :style="{ paddingLeft: `${level * 20}px` }">
+    <div v-if="!isObject && !isArray" class="group flex items-center py-0.5 hover:bg-slate-100 transition-colors" :style="{ paddingLeft: `${level * 20}px` }">
       <span class="text-rose-400 font-semibold mr-1.5 cursor-pointer hover:underline" @click="copyKey">{{ displayKey }}:</span>
       <span :class="`cursor-pointer px-1 py-0.5 rounded transition-colors ${valueColorClass}`" @click="copyValue">{{ displayValue }}</span>
       <span class="text-slate-500 ml-0.5">,</span>

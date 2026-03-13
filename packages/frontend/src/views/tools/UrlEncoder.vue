@@ -112,7 +112,7 @@ function copyOutput() {
             v-model="outputText"
             placeholder="结果将在这里显示..."
             readonly
-            class="glass-input flex-1 min-h-[200px] p-4 font-mono text-sm resize-none bg-white/5"
+            class="glass-input flex-1 min-h-[200px] p-4 font-mono text-sm resize-none bg-slate-100"
           />
         </div>
       </div>

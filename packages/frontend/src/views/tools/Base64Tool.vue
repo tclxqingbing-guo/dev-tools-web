@@ -191,7 +191,7 @@ async function downloadImage() {
                 v-model="textOutput"
                 readonly
                 placeholder="结果..."
-                class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none bg-white/5"
+                class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none bg-slate-100"
               />
             </div>
           </div>
@@ -200,11 +200,11 @@ async function downloadImage() {
 
       <div v-else class="space-y-4">
         <div class="glass-card p-4">
-          <h3 class="text-slate-100 font-medium mb-3">编码（上传图片）</h3>
+          <h3 class="text-slate-800 font-medium mb-3">编码（上传图片）</h3>
           <div
             :class="[
               'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
-              isDragging ? 'border-accent bg-accent/10' : 'border-white/20 hover:border-white/30 hover:bg-white/5',
+              isDragging ? 'border-accent bg-accent/10' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-100',
             ]"
             @drop="onDrop"
             @dragover="onDragOver"
@@ -218,7 +218,7 @@ async function downloadImage() {
         </div>
 
         <div class="glass-card p-4">
-          <h3 class="text-slate-100 font-medium mb-3">解码（Base64 → 图片）</h3>
+          <h3 class="text-slate-800 font-medium mb-3">解码（Base64 → 图片）</h3>
           <div class="flex gap-2 mb-2">
             <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="decodeImage">
               解码
@@ -234,7 +234,7 @@ async function downloadImage() {
             class="glass-input w-full min-h-[80px] p-3 font-mono text-sm resize-none mb-4"
           />
           <div v-if="imagePreview" class="mt-4">
-            <img :src="imagePreview" alt="Preview" class="max-h-64 rounded-xl border border-white/10" />
+            <img :src="imagePreview" alt="Preview" class="max-h-64 rounded-xl border border-slate-200" />
           </div>
         </div>
 

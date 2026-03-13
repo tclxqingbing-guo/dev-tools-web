@@ -119,7 +119,7 @@ function copySection(section: 'header' | 'payload' | 'signature') {
       </div>
 
       <div v-if="tokenInfo" class="glass-card p-4">
-        <h3 class="text-slate-100 font-medium mb-3">Token 信息</h3>
+        <h3 class="text-slate-800 font-medium mb-3">Token 信息</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
           <div class="text-slate-500">签发者 (iss)</div>
           <div class="text-slate-300 col-span-2">{{ tokenInfo.issuer }}</div>
@@ -143,7 +143,7 @@ function copySection(section: 'header' | 'payload' | 'signature') {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="glass-card p-4 bg-surface-card">
           <div class="flex items-center justify-between mb-2">
-            <h3 class="text-slate-100 text-sm font-medium">Header</h3>
+            <h3 class="text-slate-800 text-sm font-medium">Header</h3>
             <button
               class="btn-secondary p-1.5 cursor-pointer"
               :disabled="!parts.header"
@@ -158,7 +158,7 @@ function copySection(section: 'header' | 'payload' | 'signature') {
         </div>
         <div class="glass-card p-4 bg-surface-card">
           <div class="flex items-center justify-between mb-2">
-            <h3 class="text-slate-100 text-sm font-medium">Payload</h3>
+            <h3 class="text-slate-800 text-sm font-medium">Payload</h3>
             <button
               class="btn-secondary p-1.5 cursor-pointer"
               :disabled="!parts.payload"
@@ -173,7 +173,7 @@ function copySection(section: 'header' | 'payload' | 'signature') {
         </div>
         <div class="glass-card p-4 bg-surface-card">
           <div class="flex items-center justify-between mb-2">
-            <h3 class="text-slate-100 text-sm font-medium">Signature</h3>
+            <h3 class="text-slate-800 text-sm font-medium">Signature</h3>
             <button
               class="btn-secondary p-1.5 cursor-pointer"
               :disabled="!parts.signature"

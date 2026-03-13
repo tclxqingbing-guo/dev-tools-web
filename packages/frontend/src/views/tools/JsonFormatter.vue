@@ -229,7 +229,7 @@ function copyAll() {
 
         <div class="glass-card p-4 flex flex-col bg-surface-card">
           <label class="text-slate-500 text-sm font-medium mb-2">树形视图</label>
-          <div class="flex-1 min-h-[400px] overflow-auto p-4 rounded-xl bg-white/5 font-mono text-sm">
+          <div class="flex-1 min-h-[400px] overflow-auto p-4 rounded-xl bg-slate-100 font-mono text-sm">
             <JsonNode
               v-if="parsedJson !== null"
               :data="parsedJson"

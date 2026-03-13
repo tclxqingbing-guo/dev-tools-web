@@ -85,7 +85,7 @@ function copyGenerated() {
   <ToolLayout title="企业信用代码">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">校验统一社会信用代码</h3>
+        <h3 class="text-slate-800 font-medium mb-4">校验统一社会信用代码</h3>
         <div class="flex gap-3">
           <input
             v-model="validateInput"
@@ -100,7 +100,7 @@ function copyGenerated() {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">生成</h3>
+        <h3 class="text-slate-800 font-medium mb-4">生成</h3>
         <div class="flex gap-4 items-end">
           <div>
             <label class="block text-slate-500 text-sm mb-2">数量</label>
@@ -115,7 +115,7 @@ function copyGenerated() {
 
       <div v-if="generatedCodes.length > 0" class="glass-card p-5">
         <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-100 font-medium">生成结果</h3>
+          <h3 class="text-slate-800 font-medium">生成结果</h3>
           <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制

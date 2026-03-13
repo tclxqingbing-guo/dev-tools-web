@@ -178,7 +178,7 @@ onUnmounted(() => {
   <ToolLayout title="AI 图表生成">
     <div class="space-y-6">
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4">配置</h3>
+        <h3 class="text-slate-800 font-medium mb-4">配置</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="text-slate-500 text-sm font-medium block mb-2">模型</label>
@@ -212,7 +212,7 @@ onUnmounted(() => {
         <textarea
           v-model="inputText"
           placeholder="输入数据或描述图表需求，例如：&#10;月度销售额：1月120万，2月150万，3月180万&#10;或：生成展示各部门占比的饼图"
-          class="glass-input w-full min-h-[140px] p-4 text-slate-100 placeholder:text-slate-500 resize-y"
+          class="glass-input w-full min-h-[140px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
         />
       </div>
 
@@ -247,7 +247,7 @@ onUnmounted(() => {
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-100 font-medium mb-4 flex items-center gap-2">
+        <h3 class="text-slate-800 font-medium mb-4 flex items-center gap-2">
           <ChartBarIcon class="w-5 h-5 text-accent" />
           图表预览
         </h3>

@@ -212,15 +212,15 @@ function copyDiff() {
           </button>
         </div>
         <div class="flex items-center gap-4 text-sm">
-          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
             <input v-model="ignoreWhitespace" type="checkbox" class="rounded cursor-pointer" />
             忽略空白
           </label>
-          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
             <input v-model="ignoreLineBreaks" type="checkbox" class="rounded cursor-pointer" />
             忽略换行
           </label>
-          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
             <input v-model="ignoreCase" type="checkbox" class="rounded cursor-pointer" />
             忽略大小写
           </label>
