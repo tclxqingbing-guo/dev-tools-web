@@ -85,9 +85,12 @@ FRONTEND_PORT=8080
 # 可选：AI 能力
 AI_API_BASE_URL=https://api.openai.com
 AI_API_KEY=sk-xxx
+# 若只用分用途密钥、不设 AI_API_KEY，务必在 compose 里传入（仓库已包含）：
+# AI_API_KEY-CHAT=sk-xxx
+# AI_API_KEY-IMAGE=sk-xxx
 ```
 
-保存后确认 `docker-compose.yml` 中已使用这些变量（当前已配置 `FRONTEND_PORT`、`AI_API_*`）。
+保存后确认 `docker-compose.yml` 已传入你实际使用的变量（`AI_API_BASE_URL` + `AI_API_KEY`，或 `AI_API_KEY-CHAT` / `AI_API_KEY-IMAGE`）。
 
 ### 4. 构建并启动
 

@@ -9,6 +9,8 @@ services:
     environment:
       - AI_API_BASE_URL=${AI_API_BASE_URL:-}
       - AI_API_KEY=${AI_API_KEY:-}
+      - AI_API_KEY-CHAT=${AI_API_KEY-CHAT:-}
+      - AI_API_KEY-IMAGE=${AI_API_KEY-IMAGE:-}
       - BACKEND_PORT=3001
     volumes:
       - /opt/data/dev_tools:/app/data
