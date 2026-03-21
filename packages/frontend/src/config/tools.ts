@@ -212,17 +212,6 @@ export const tools: Tool[] = [
     category: '实用工具',
     usageScore: 7,
   },
-  // 入口已关闭：小程序码非标准 QR、mp.weixin.qq.com/a 短链多在非微信环境 404，工具实际价值有限；需恢复时取消注释并同步 router。
-  // {
-  //   name: '微信小程序解析',
-  //   icon: 'LinkIcon',
-  //   description: '小程序码识别、Scheme / 短链 / 页面路径解析与 WebView 参数提取',
-  //   route: '/tool/wechat-miniprogram-parser',
-  //   component: 'WechatMiniprogramParser',
-  //   keywords: ['微信', '小程序', 'miniprogram', 'wxaurl', 'scheme', 'webview', '小程序码'],
-  //   category: '开发工具',
-  //   usageScore: 6,
-  // },
   {
     name: '笔记本',
     icon: 'PencilSquareIcon',
@@ -268,7 +257,5 @@ function getSmartRecommendations(input: string): Tool[] {
     r.push(tools.find(t => t.component === 'JwtParser')!)
   if (/^https?:\/\//.test(trimmed))
     r.push(tools.find(t => t.component === 'UrlEncoder')!)
-  // if (trimmed.includes('小程序://') || trimmed.includes('wxaurl.cn') || trimmed.includes('wxurl.cn'))
-  //   r.push(tools.find(t => t.component === 'WechatMiniprogramParser')!)
   return r.filter(Boolean)
 }
