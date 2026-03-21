@@ -6,11 +6,12 @@ services:
       target: backend-runtime
     container_name: devtools-backend
     restart: unless-stopped
+    # Load .env into the container so names like AI_API_KEY-CHAT work. Compose
+    # ${VAR:-} interpolation does not treat hyphens as part of VAR, so
+    # ${AI_API_KEY-CHAT:-} becomes the literal "CHAT:-".
+    env_file:
+      - .env
     environment:
-      - AI_API_BASE_URL=${AI_API_BASE_URL:-}
-      - AI_API_KEY=${AI_API_KEY:-}
-      - AI_API_KEY-CHAT=${AI_API_KEY-CHAT:-}
-      - AI_API_KEY-IMAGE=${AI_API_KEY-IMAGE:-}
       - BACKEND_PORT=3001
     volumes:
       - /opt/data/dev_tools:/app/data

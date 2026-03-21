@@ -90,7 +90,7 @@ AI_API_KEY=sk-xxx
 # AI_API_KEY-IMAGE=sk-xxx
 ```
 
-保存后确认 `docker-compose.yml` 已传入你实际使用的变量（`AI_API_BASE_URL` + `AI_API_KEY`，或 `AI_API_KEY-CHAT` / `AI_API_KEY-IMAGE`）。
+保存后确认 `docker-compose.yml` 会通过 **`env_file: .env`** 把整份 `.env` 注入 backend（带连字符的 `AI_API_KEY-CHAT` 等才能正确传入；不要用 `${AI_API_KEY-CHAT:-}` 写在 `environment` 里，Compose 会解析错）。
 
 ### 4. 构建并启动
 
