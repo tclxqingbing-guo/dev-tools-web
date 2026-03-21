@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import {
@@ -85,7 +85,13 @@ const selectedGender = ref<'all' | 'Male' | 'Female'>('Female')
 const voice = ref('zh-CN-XiaoxiaoNeural')
 const speed = ref(1.0)
 const loading = ref(false)
+/** 当前用于 <audio> 播放的地址（优先为 blob，避免跨域缓存导致一直播旧文件） */
 const audioUrl = ref<string | null>(null)
+/** 同源或直连的远程音频 URL，用于新标签页打开/下载，不随 blob 失效 */
+const lastRemoteAudioUrl = ref<string | null>(null)
+/** 递增以强制销毁并重建 audio 节点，杜绝复用同一 DOM 时缓冲旧音频 */
+const audioRevision = ref(0)
+const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
 
 const languageOptions = computed(() => {
@@ -112,13 +118,95 @@ const filteredVoiceList = computed(() => {
   }))
 })
 
-let audioElement: HTMLAudioElement | null = null
+/**
+ * 将接口返回的相对路径拼成绝对 URL，并附带时间戳，降低 fetch/浏览器使用旧缓存的概率。
+ * @param relativePath 接口 data.audio，允许以 / 开头
+ * @returns 绝对地址
+ */
+function buildAudioSrcWithCacheBust(relativePath: string): string {
+  const rel = relativePath.replace(/^\//, '')
+  const u = new URL(rel, `${TTS_ORIGIN}/`)
+  u.searchParams.set('_tts', String(Date.now()))
+  return u.toString()
+}
 
+/**
+ * 释放上一轮生成的 blob 播放地址，避免泄漏。
+ * @returns void
+ */
 function revokePreviousUrl() {
   if (audioUrl.value?.startsWith('blob:')) {
     URL.revokeObjectURL(audioUrl.value)
   }
   audioUrl.value = null
+  lastRemoteAudioUrl.value = null
+}
+
+/**
+ * 通过本站后端同源拉取 TTS 文件（仅允许 bx-tts 域名），得到 Blob，避免浏览器/CDN 缓存与 CORS。
+ * @param relativePath 接口 data.audio
+ * @returns 音频 Blob 或 null（如未启后端或请求失败）
+ */
+async function loadPlaybackBlobViaProxy(relativePath: string): Promise<Blob | null> {
+  try {
+    const res = await fetch('/api/tts/fetch-audio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: relativePath.replace(/^\//, '') }),
+    })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return blob.size ? blob : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 直连 CDN 拉取为 Blob（需对方返回 CORS）；失败则返回 null。
+ * @param remoteUrl 完整音频地址
+ * @returns blob object URL 或 null
+ */
+async function tryCreateBlobPlaybackUrl(remoteUrl: string): Promise<string | null> {
+  try {
+    const r = await fetch(remoteUrl, { method: 'GET', cache: 'no-store', mode: 'cors' })
+    if (!r.ok) return null
+    const blob = await r.blob()
+    if (!blob.size) return null
+    return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 生成完成后更新播放源：优先同源代理 Blob，其次跨域 Blob，最后直连；并重建 audio 节点。
+ * @param relativePath 接口返回的 data.audio
+ * @returns Promise<void>
+ */
+async function applyGeneratedAudio(relativePath: string) {
+  const remoteUrl = buildAudioSrcWithCacheBust(relativePath)
+  lastRemoteAudioUrl.value = remoteUrl
+  isPlaying.value = false
+
+  const fromProxy = await loadPlaybackBlobViaProxy(relativePath)
+  let playbackUrl: string
+  if (fromProxy) {
+    playbackUrl = URL.createObjectURL(fromProxy)
+  } else {
+    const blobUrl = await tryCreateBlobPlaybackUrl(remoteUrl)
+    playbackUrl = blobUrl ?? remoteUrl
+  }
+  audioUrl.value = playbackUrl
+
+  audioRevision.value += 1
+  await nextTick()
+  const el = audioRef.value
+  if (el) {
+    el.pause()
+    el.currentTime = 0
+    el.load()
+  }
 }
 
 function formatRate(): string {
@@ -190,8 +278,8 @@ async function generate() {
     if (!json?.success || !json?.data?.audio) {
       throw new Error(json?.message || '生成失败')
     }
-    const path = (json.data.audio as string).replace(/^\//, '')
-    audioUrl.value = `${TTS_ORIGIN}/${path}`
+    const path = json.data.audio as string
+    await applyGeneratedAudio(path)
     toast.success('语音合成成功')
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '生成失败'
@@ -217,29 +305,39 @@ function onAudioEnded() {
   isPlaying.value = false
 }
 
+/**
+ * 播放/暂停当前合成结果（使用 ref，与 :key 重建后的节点一致）。
+ * @returns void
+ */
 function togglePlayPause() {
   if (!audioUrl.value) return
-  if (!audioElement) {
-    audioElement = document.getElementById('tts-audio') as HTMLAudioElement
-  }
-  if (!audioElement) return
+  const el = audioRef.value
+  if (!el) return
   if (isPlaying.value) {
-    audioElement.pause()
+    el.pause()
   } else {
-    audioElement.play().catch(() => toast.error('播放失败'))
+    el.play().catch(() => toast.error('播放失败'))
   }
 }
 
+/**
+ * 在新标签页打开音频，避免 <a download> 跨域时顶替当前页或无效。
+ * @returns void
+ */
 function downloadAudio() {
-  if (!audioUrl.value) {
+  const openUrl = lastRemoteAudioUrl.value || audioUrl.value
+  if (!openUrl) {
     toast.warning('请先生成语音')
     return
   }
-  const a = document.createElement('a')
-  a.href = audioUrl.value
-  a.download = `tts-${Date.now()}.mp3`
-  a.click()
-  toast.success('已开始下载')
+  try {
+    const u = new URL(openUrl)
+    u.searchParams.delete('_tts')
+    window.open(u.toString(), '_blank', 'noopener,noreferrer')
+  } catch {
+    window.open(openUrl, '_blank', 'noopener,noreferrer')
+  }
+  toast.success('已在新标签页打开，可在播放器中另存为')
 }
 
 onUnmounted(() => {
@@ -327,11 +425,13 @@ onUnmounted(() => {
       </div>
 
       <div v-if="audioUrl" class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">播放与下载</h3>
+        <h3 class="text-slate-800 font-medium mb-4">播放与新标签页打开</h3>
         <audio
-          id="tts-audio"
-          :src="audioUrl"
+          :key="audioRevision"
+          ref="audioRef"
+          :src="audioUrl || undefined"
           class="hidden"
+          preload="auto"
           @play="onAudioPlay"
           @pause="onAudioPause"
           @ended="onAudioEnded"
@@ -350,7 +450,7 @@ onUnmounted(() => {
             @click="downloadAudio"
           >
             <ArrowDownTrayIcon class="w-4 h-4" />
-            下载音频
+            新标签页打开
           </button>
         </div>
       </div>

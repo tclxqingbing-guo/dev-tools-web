@@ -37,6 +37,12 @@ const router = createRouter({
     { path: '/tool/tts-generator', name: 'TtsGenerator', component: lazyTool('TtsGenerator') },
     { path: '/tool/ocr-tool', name: 'OcrTool', component: lazyTool('OcrTool') },
     { path: '/tool/note-tool', name: 'NoteTool', component: lazyTool('NoteTool') },
+    // 与 tools.ts 中「微信小程序解析」入口一并关闭，见该处注释。
+    // {
+    //   path: '/tool/wechat-miniprogram-parser',
+    //   name: 'WechatMiniprogramParser',
+    //   component: lazyTool('WechatMiniprogramParser'),
+    // },
   ],
 })
 

@@ -23,6 +23,8 @@ import { aiRouter } from './routes/ai.js'
 import { notesRouter } from './routes/notes.js'
 import { wishesRouter } from './routes/wishes.js'
 import { dictionaryRouter } from './routes/dictionary.js'
+import { miniprogramRouter } from './routes/miniprogram.js'
+import { ttsRouter } from './routes/tts.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
@@ -38,6 +40,8 @@ app.use('/api/ai', aiRouter)
 app.use('/api/notes', notesRouter)
 app.use('/api/wishes', wishesRouter)
 app.use('/api/dictionary', dictionaryRouter)
+app.use('/api/miniprogram', miniprogramRouter)
+app.use('/api/tts', ttsRouter)
 
 app.listen(PORT, () => {
   const hasAi =
