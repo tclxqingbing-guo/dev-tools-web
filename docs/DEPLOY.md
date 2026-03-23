@@ -100,6 +100,17 @@ docker compose -f docker-compose.yml build --no-cache
 docker compose -f docker-compose.yml up -d
 ```
 
+**仅 `git pull` 再 `docker compose up -d` 不会更新页面**：前端是构建时打进镜像的静态文件，容器一直在跑旧镜像。更新代码后必须**至少重建 frontend** 再起容器：
+
+```bash
+cd /opt/dev-tools-web
+git pull
+docker compose build frontend
+docker compose up -d
+```
+
+改了后端或依赖时可用 `docker compose build` 全量构建；想彻底避免缓存问题可加 `--no-cache`。
+
 ### 5. 验证
 
 - 浏览器访问：`http://服务器IP:8080`（端口与 `FRONTEND_PORT` 一致）。
