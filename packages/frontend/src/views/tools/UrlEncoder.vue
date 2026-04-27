@@ -12,6 +12,10 @@ const outputText = ref('')
 
 function encodeUri() {
   try {
+    if (!inputText.value) {
+      toast.warning('请输入要编码的URI')
+      return
+    }
     outputText.value = encodeURI(inputText.value)
     toast.success('编码完成')
   } catch (e: any) {
@@ -21,6 +25,10 @@ function encodeUri() {
 
 function decodeUri() {
   try {
+    if (!inputText.value) {
+      toast.warning('请输入要解码的URI')
+      return
+    }
     outputText.value = decodeURI(inputText.value)
     toast.success('解码完成')
   } catch (e: any) {
@@ -30,6 +38,10 @@ function decodeUri() {
 
 function encodeComponent() {
   try {
+    if (!inputText.value) {
+      toast.warning('请输入要编码的组件')
+      return
+    }
     outputText.value = encodeURIComponent(inputText.value)
     toast.success('编码完成')
   } catch (e: any) {
@@ -39,6 +51,10 @@ function encodeComponent() {
 
 function decodeComponent() {
   try {
+    if (!inputText.value) {
+      toast.warning('请输入要解码的组件')
+      return
+    }
     outputText.value = decodeURIComponent(inputText.value)
     toast.success('解码完成')
   } catch (e: any) {
@@ -71,16 +87,16 @@ function copyOutput() {
       <div class="flex flex-wrap gap-2">
         <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="encodeUri">
           <ArrowsRightLeftIcon class="w-4 h-4" />
-          Encode URI
+          编码URI
         </button>
         <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="decodeUri">
-          Decode URI
+          解码URI
         </button>
         <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="encodeComponent">
-          Encode Component
+          编码组件
         </button>
         <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="decodeComponent">
-          Decode Component
+          解码组件
         </button>
       </div>
 
