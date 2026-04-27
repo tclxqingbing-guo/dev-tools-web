@@ -193,6 +193,16 @@ export const tools: Tool[] = [
     usageScore: 6,
   },
   {
+    name: '暗水印还原',
+    icon: 'EyeIcon',
+    description: '本地增强截图中的暗水印，支持多种还原算法与灰度输出',
+    route: '/tool/watermark-reveal',
+    component: 'WatermarkReveal',
+    keywords: ['水印', '暗水印', 'watermark', '截图', '图片', '还原', '增强'],
+    category: '媒体工具',
+    usageScore: 7,
+  },
+  {
     name: 'AI Tailwind CSS',
     icon: 'SwatchIcon',
     description: 'AI 生成 Tailwind CSS 类名及速查手册',

@@ -25,6 +25,7 @@ const router = createRouter({
     { path: '/tool/base64-tool', name: 'Base64Tool', component: lazyTool('Base64Tool') },
     { path: '/tool/code-diff', name: 'CodeDiff', component: lazyTool('CodeDiff') },
     { path: '/tool/image-compressor', name: 'ImageCompressor', component: lazyTool('ImageCompressor') },
+    { path: '/tool/watermark-reveal', name: 'WatermarkReveal', component: lazyTool('WatermarkReveal') },
     { path: '/tool/qrcode-tool', name: 'QrCodeTool', component: lazyTool('QrCodeTool') },
     { path: '/tool/id-card-generator', name: 'IdCardGenerator', component: lazyTool('IdCardGenerator') },
     { path: '/tool/company-code-generator', name: 'CompanyCodeGenerator', component: lazyTool('CompanyCodeGenerator') },
