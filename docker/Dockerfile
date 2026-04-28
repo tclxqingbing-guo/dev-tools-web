@@ -11,6 +11,12 @@ COPY packages/backend/package.json packages/backend/
 RUN pnpm install
 
 FROM base AS frontend-build
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_TRACES_SAMPLE_RATE
+ARG VITE_SENTRY_TEST_EVENT
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+ENV VITE_SENTRY_TRACES_SAMPLE_RATE=${VITE_SENTRY_TRACES_SAMPLE_RATE}
+ENV VITE_SENTRY_TEST_EVENT=${VITE_SENTRY_TEST_EVENT}
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/frontend/node_modules ./packages/frontend/node_modules
 COPY pnpm-workspace.yaml package.json ./

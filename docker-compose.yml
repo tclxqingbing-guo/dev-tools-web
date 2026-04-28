@@ -23,6 +23,10 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: frontend-runtime
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-1}
+        VITE_SENTRY_TEST_EVENT: ${VITE_SENTRY_TEST_EVENT:-false}
     container_name: devtools-frontend
     restart: unless-stopped
     ports:
