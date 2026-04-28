@@ -11,14 +11,11 @@ import {
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 
-// ==============================================
-//  关键修复：只引入你包真实存在的方法 + 内部定义类型
-// ==============================================
+
 import {
   revealWatermark,
 } from 'bx-utils'
 
-// 你包里的类型，必须在页面重新定义（或让包导出类型）
 export type RevealMethod = 'multiscale' | 'highfreq' | 'amplify' | 'stretch' | 'filter'
 
 export interface RevealWatermarkOptions {
@@ -31,7 +28,7 @@ export interface RevealWatermarkOptions {
   brightness?: number
 }
 
-// 自己实现 formatFileSize（你的包没导出！）
+
 function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -41,9 +38,7 @@ function formatFileSize(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-// ==============================================
-//  以下逻辑完全不变，只修复了依赖
-// ==============================================
+
 
 interface MethodOption {
   value: RevealMethod
@@ -73,6 +68,9 @@ const grayscale = ref(true)
 const amplify = ref(40)
 const blockSize = ref(16)
 const blurRadius = ref(3)
+const bgType = ref<'bright' | 'dark'>('bright')
+const lowP = ref(1)
+const highP = ref(99)
 const contrast = ref(15)
 const brightness = ref(0.5)
 const lastError = ref('')
@@ -91,6 +89,8 @@ const sourceSizeLabel = computed(() => sourceFile.value ? formatFileSize(sourceF
 const showAmplify = computed(() => ['multiscale', 'highfreq', 'amplify'].includes(method.value))
 const showBlockSize = computed(() => method.value === 'multiscale')
 const showBlurRadius = computed(() => method.value === 'highfreq')
+const showBgType = computed(() => method.value === 'amplify')
+const showStretch = computed(() => method.value === 'stretch')
 const showFilter = computed(() => method.value === 'filter')
 const canDownload = computed(() => !!resultPreview.value)
 
@@ -100,12 +100,22 @@ const revealOptions = computed<RevealWatermarkOptions>(() => ({
   amplify: amplify.value,
   blockSize: blockSize.value,
   blurRadius: blurRadius.value,
+  bgType: bgType.value,
+  lowP: lowP.value,
+  highP: highP.value,
   contrast: contrast.value,
   brightness: brightness.value,
 }))
 
+watch(lowP, (val) => {
+  if (val >= highP.value) highP.value = Math.min(100, val + 1)
+})
+watch(highP, (val) => {
+  if (val <= lowP.value) lowP.value = Math.max(0, val - 1)
+})
+
 watch(
-  [method, grayscale, amplify, blockSize, blurRadius, contrast, brightness],
+  [method, grayscale, amplify, blockSize, blurRadius, bgType, lowP, highP, contrast, brightness],
   () => {
     if (sourceFile.value) scheduleReveal()
   }
@@ -374,6 +384,48 @@ onUnmounted(() => {
                   class="w-full cursor-pointer accent-accent"
                 />
               </div>
+
+              <div v-if="showBgType" class="space-y-2">
+                <label class="text-sm text-slate-500">背景类型</label>
+                <select
+                  v-model="bgType"
+                  class="w-full px-4 py-3 cursor-pointer glass-input"
+                >
+                  <option value="bright">亮底界面</option>
+                  <option value="dark">暗底界面</option>
+                </select>
+              </div>
+
+              <template v-if="showStretch">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>低分位 (LowP)</span>
+                    <span class="font-medium text-accent">{{ lowP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="lowP"
+                    type="range"
+                    min="0"
+                    max="99"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>高分位 (HighP)</span>
+                    <span class="font-medium text-accent">{{ highP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="highP"
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+              </template>
 
               <template v-if="showFilter">
                 <div class="space-y-2">
