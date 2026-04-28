@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
-    "bx-utils": "^1.0.6",
+    "@sentry/vue": "^10.50.0",
+    "bx-utils": "^1.0.7",
     "diff": "^8.0.2",
     "echarts": "^6.0.0",
     "highlight.js": "^11.11.1",
