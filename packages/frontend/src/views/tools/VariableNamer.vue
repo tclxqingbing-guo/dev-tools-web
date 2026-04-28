@@ -17,7 +17,7 @@ const suggestions = ref<{ camel: string[]; snake: string[]; pascal: string[] }>(
   pascal: [],
 })
 const isLoading = ref(false)
-const selectedModel = ref('deepseek-v3.2')
+const selectedModel = ref('deepseek-v4-flash')
 
 const SYSTEM_PROMPT = `You are a variable naming assistant. Given a description, output variable names in exactly 3 lines:
 Line 1: camelCase names, comma-separated (e.g. userName, itemCount)

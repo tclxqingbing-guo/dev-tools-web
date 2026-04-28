@@ -20,7 +20,7 @@ type InputMode = 'css' | 'text'
 const inputMode = ref<InputMode>('text')
 const cssInput = ref('')
 const textInput = ref('')
-const model = ref('deepseek-v3.2')
+const model = ref('deepseek-v4-flash')
 const loading = ref(false)
 const resultClasses = ref('')
 

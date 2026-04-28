@@ -17,7 +17,7 @@ const { chatModels: models } = useAiModels()
 
 const inputText = ref('')
 const outputText = ref('')
-const selectedModel = ref('deepseek-v3.2')
+const selectedModel = ref('deepseek-v4-flash')
 const transMode = ref('auto')
 const customSource = ref('')
 const customTarget = ref('')

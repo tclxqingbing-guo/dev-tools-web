@@ -25,7 +25,7 @@ interface ChatMessage {
 
 const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
-const selectedChatModel = ref('deepseek-v3.2')
+const selectedChatModel = ref('deepseek-v4-flash')
 const isStreaming = ref(false)
 
 function clearChat() {
