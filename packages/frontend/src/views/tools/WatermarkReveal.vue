@@ -11,14 +11,11 @@ import {
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 
-// ==============================================
-//  关键修复：只引入你包真实存在的方法 + 内部定义类型
-// ==============================================
+
 import {
   revealWatermark,
 } from 'bx-utils'
 
-// 你包里的类型，必须在页面重新定义（或让包导出类型）
 export type RevealMethod = 'multiscale' | 'highfreq' | 'amplify' | 'stretch' | 'filter'
 
 export interface RevealWatermarkOptions {
@@ -31,7 +28,7 @@ export interface RevealWatermarkOptions {
   brightness?: number
 }
 
-// 自己实现 formatFileSize（你的包没导出！）
+
 function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -41,9 +38,7 @@ function formatFileSize(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-// ==============================================
-//  以下逻辑完全不变，只修复了依赖
-// ==============================================
+
 
 interface MethodOption {
   value: RevealMethod
@@ -73,6 +68,9 @@ const grayscale = ref(true)
 const amplify = ref(40)
 const blockSize = ref(16)
 const blurRadius = ref(3)
+const bgType = ref<'bright' | 'dark'>('bright')
+const lowP = ref(1)
+const highP = ref(99)
 const contrast = ref(15)
 const brightness = ref(0.5)
 const lastError = ref('')
@@ -91,6 +89,8 @@ const sourceSizeLabel = computed(() => sourceFile.value ? formatFileSize(sourceF
 const showAmplify = computed(() => ['multiscale', 'highfreq', 'amplify'].includes(method.value))
 const showBlockSize = computed(() => method.value === 'multiscale')
 const showBlurRadius = computed(() => method.value === 'highfreq')
+const showBgType = computed(() => method.value === 'amplify')
+const showStretch = computed(() => method.value === 'stretch')
 const showFilter = computed(() => method.value === 'filter')
 const canDownload = computed(() => !!resultPreview.value)
 
@@ -100,12 +100,22 @@ const revealOptions = computed<RevealWatermarkOptions>(() => ({
   amplify: amplify.value,
   blockSize: blockSize.value,
   blurRadius: blurRadius.value,
+  bgType: bgType.value,
+  lowP: lowP.value,
+  highP: highP.value,
   contrast: contrast.value,
   brightness: brightness.value,
 }))
 
+watch(lowP, (val) => {
+  if (val >= highP.value) highP.value = Math.min(100, val + 1)
+})
+watch(highP, (val) => {
+  if (val <= lowP.value) lowP.value = Math.max(0, val - 1)
+})
+
 watch(
-  [method, grayscale, amplify, blockSize, blurRadius, contrast, brightness],
+  [method, grayscale, amplify, blockSize, blurRadius, bgType, lowP, highP, contrast, brightness],
   () => {
     if (sourceFile.value) scheduleReveal()
   }
@@ -249,7 +259,7 @@ function clearAll(showToast = true) {
   isDragging.value = false
   isRevealing.value = false
   resetResultState()
-  if (fileInput.value) fileInput.value = ''
+  if (fileInput.value) fileInput.value = null
   if (showToast) toast.success('已清空')
 }
 
@@ -299,7 +309,7 @@ onUnmounted(() => {
         <div class="absolute inset-0 pointer-events-none">
           <div class="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.45),transparent_70%)]" />
           <div class="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15),transparent_72%)]" />
-          <div class="absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
+          <div class="absolute w-40 h-40 rounded-full -bottom-16 left-1/3 bg-accent/10 blur-3xl" />
         </div>
 
         <div class="relative grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -317,7 +327,7 @@ onUnmounted(() => {
                 <label class="text-sm text-slate-500">处理方法</label>
                 <select
                   v-model="method"
-                  class="glass-input w-full px-4 py-3 text-base cursor-pointer"
+                  class="w-full px-4 py-3 text-base cursor-pointer glass-input"
                 >
                   <option
                     v-for="item in methodOptions"
@@ -341,7 +351,7 @@ onUnmounted(() => {
                   min="1"
                   max="80"
                   step="1"
-                  class="w-full accent-accent cursor-pointer"
+                  class="w-full cursor-pointer accent-accent"
                 />
               </div>
 
@@ -356,7 +366,7 @@ onUnmounted(() => {
                   min="4"
                   max="48"
                   step="2"
-                  class="w-full accent-accent cursor-pointer"
+                  class="w-full cursor-pointer accent-accent"
                 />
               </div>
 
@@ -371,9 +381,51 @@ onUnmounted(() => {
                   min="1"
                   max="12"
                   step="1"
-                  class="w-full accent-accent cursor-pointer"
+                  class="w-full cursor-pointer accent-accent"
                 />
               </div>
+
+              <div v-if="showBgType" class="space-y-2">
+                <label class="text-sm text-slate-500">背景类型</label>
+                <select
+                  v-model="bgType"
+                  class="w-full px-4 py-3 cursor-pointer glass-input"
+                >
+                  <option value="bright">亮底界面</option>
+                  <option value="dark">暗底界面</option>
+                </select>
+              </div>
+
+              <template v-if="showStretch">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>低分位 (LowP)</span>
+                    <span class="font-medium text-accent">{{ lowP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="lowP"
+                    type="range"
+                    min="0"
+                    max="99"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>高分位 (HighP)</span>
+                    <span class="font-medium text-accent">{{ highP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="highP"
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+              </template>
 
               <template v-if="showFilter">
                 <div class="space-y-2">
@@ -387,7 +439,7 @@ onUnmounted(() => {
                     min="1"
                     max="40"
                     step="0.5"
-                    class="w-full accent-accent cursor-pointer"
+                    class="w-full cursor-pointer accent-accent"
                   />
                 </div>
                 <div class="space-y-2">
@@ -401,12 +453,12 @@ onUnmounted(() => {
                     min="0.2"
                     max="2"
                     step="0.05"
-                    class="w-full accent-accent cursor-pointer"
+                    class="w-full cursor-pointer accent-accent"
                   />
                 </div>
               </template>
 
-              <!-- <div class="flex items-center justify-between border-t border-slate-200 pt-5"> -->
+              <!-- <div class="flex items-center justify-between pt-5 border-t border-slate-200"> -->
                 <!-- <div> -->
                   <!-- <p class="text-sm text-slate-500">输出灰度图</p> -->
                   <!-- <p class="mt-1 text-xs text-slate-400">开启后更容易观察弱对比暗纹。</p> -->
@@ -414,27 +466,27 @@ onUnmounted(() => {
                 <!-- <button
                   type="button"
                   :aria-pressed="grayscale"
-                  class="relative inline-flex h-9 w-16 items-center rounded-full transition-colors cursor-pointer"
+                  class="relative inline-flex items-center w-16 transition-colors rounded-full cursor-pointer h-9"
                   :class="grayscale ? 'bg-accent' : 'bg-slate-200'"
                   @click="grayscale = !grayscale"
                 >
                   <span
-                    class="inline-block h-7 w-7 rounded-full bg-white shadow-sm transition-transform"
+                    class="inline-block transition-transform bg-white rounded-full shadow-sm h-7 w-7"
                     :class="grayscale ? 'translate-x-8' : 'translate-x-1'"
                   />
                 </button>
               </div> -->
 
-              <div class="rounded-2xl bg-slate-50/90 p-4 text-sm text-slate-500">
+              <div class="p-4 text-sm rounded-2xl bg-slate-50/90 text-slate-500">
                 <div class="flex items-center justify-between gap-3">
                   <span>当前图像</span>
                   <span class="font-medium text-slate-700">{{ sourceFile?.name || '未上传' }}</span>
                 </div>
-                <div class="mt-2 flex items-center justify-between gap-3">
+                <div class="flex items-center justify-between gap-3 mt-2">
                   <span>尺寸</span>
                   <span class="text-slate-700">{{ sourceWidth && sourceHeight ? `${sourceWidth} × ${sourceHeight}` : '--' }}</span>
                 </div>
-                <div class="mt-2 flex items-center justify-between gap-3">
+                <div class="flex items-center justify-between gap-3 mt-2">
                   <span>大小</span>
                   <span class="text-slate-700">{{ sourceSizeLabel || '--' }}</span>
                 </div>
@@ -443,26 +495,26 @@ onUnmounted(() => {
               <div class="flex gap-2">
                 <button
                   type="button"
-                  class="btn-secondary flex items-center gap-2"
+                  class="flex items-center gap-2 btn-secondary"
                   @click="clearAll()"
                 >
-                  <TrashIcon class="h-4 w-4" />
+                  <TrashIcon class="w-4 h-4" />
                   清空
                 </button>
                 <button
                   type="button"
-                  class="btn-secondary flex items-center gap-2"
+                  class="flex items-center gap-2 btn-secondary"
                   :disabled="!sourceFile"
                   @click="scheduleReveal(true)"
                 >
-                  <ArrowPathIcon class="h-4 w-4" />
+                  <ArrowPathIcon class="w-4 h-4" />
                   重新还原
                 </button>
               </div>
             </div>
           </aside>
 
-          <div class="space-y-4 min-w-0">
+          <div class="min-w-0 space-y-4">
             <div class="glass-card bg-white/82 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.14)]">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -475,19 +527,19 @@ onUnmounted(() => {
                 <div class="flex gap-2">
                   <button
                     type="button"
-                    class="btn-primary flex items-center gap-2"
+                    class="flex items-center gap-2 btn-primary"
                     @click="triggerFileSelect"
                   >
-                    <PhotoIcon class="h-4 w-4" />
+                    <PhotoIcon class="w-4 h-4" />
                     选择图片
                   </button>
                   <button
                     type="button"
-                    class="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex items-center gap-2 btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="!canDownload"
                     @click="downloadResult"
                   >
-                    <ArrowDownTrayIcon class="h-4 w-4" />
+                    <ArrowDownTrayIcon class="w-4 h-4" />
                     下载结果
                   </button>
                 </div>
@@ -510,7 +562,7 @@ onUnmounted(() => {
                 @drop="onDrop"
               >
                 <div class="space-y-3 text-slate-500">
-                  <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                  <div class="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-slate-400">
                     <SparklesIcon class="h-9 w-9" />
                   </div>
                   <p class="text-lg font-medium text-slate-700">点击 / 拖拽 / Ctrl+V 粘贴</p>
@@ -523,7 +575,7 @@ onUnmounted(() => {
 
             <div class="grid gap-4 xl:grid-cols-2">
               <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-                <div class="mb-3 flex items-center justify-between gap-3">
+                <div class="flex items-center justify-between gap-3 mb-3">
                   <h3 class="text-base font-semibold text-slate-800">原图</h3>
                   <span class="text-xs text-slate-400">已加水印截图</span>
                 </div>
@@ -540,13 +592,13 @@ onUnmounted(() => {
               </div>
 
               <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-                <div class="mb-3 flex items-center justify-between gap-3">
+                <div class="flex items-center justify-between gap-3 mb-3">
                   <div>
                     <h3 class="text-base font-semibold text-slate-800">还原结果</h3>
                     <p class="mt-1 text-xs text-slate-400">{{ activeMethod.label }} · {{ grayscale ? '灰度输出' : '彩色输出' }}</p>
                   </div>
                   <span
-                    class="rounded-full px-3 py-1 text-xs font-medium"
+                    class="px-3 py-1 text-xs font-medium rounded-full"
                     :class="isRevealing ? 'bg-accent/10 text-accent' : 'bg-slate-100 text-slate-500'"
                   >
                     {{ isRevealing ? '处理中...' : '已就绪' }}
@@ -575,19 +627,19 @@ onUnmounted(() => {
       <Transition name="fade">
         <div
           v-if="previewState.visible"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
           @click.self="closeImagePreview"
         >
           <button
             type="button"
-            class="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            class="absolute flex items-center justify-center text-white transition-colors rounded-full right-4 top-4 h-11 w-11 bg-white/10 hover:bg-white/20"
             aria-label="关闭预览"
             @click="closeImagePreview"
           >
-            <XMarkIcon class="h-6 w-6" />
+            <XMarkIcon class="w-6 h-6" />
           </button>
           <div class="w-full max-w-6xl">
-            <div class="mb-4 flex items-center justify-between gap-4 text-white">
+            <div class="flex items-center justify-between gap-4 mb-4 text-white">
               <div>
                 <p class="text-xs uppercase tracking-[0.28em] text-white/60">Preview</p>
                 <h3 class="mt-1 text-lg font-medium">{{ previewState.title }}</h3>
