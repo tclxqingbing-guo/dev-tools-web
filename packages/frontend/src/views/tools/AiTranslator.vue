@@ -17,7 +17,7 @@ const { chatModels: models } = useAiModels()
 
 const inputText = ref('')
 const outputText = ref('')
-const selectedModel = ref('deepseek-v3.2')
+const selectedModel = ref('deepseek-v4-flash')
 const transMode = ref('auto')
 const customSource = ref('')
 const customTarget = ref('')
@@ -142,12 +142,12 @@ function outputCharCount(): number {
 <template>
   <ToolLayout title="AI 翻译">
     <div class="space-y-6">
-      <div class="glass-card p-4 flex flex-wrap gap-4 items-end">
+      <div class="flex flex-wrap items-end gap-4 p-4 glass-card">
         <div>
-          <label class="text-slate-500 text-sm block mb-1">模型</label>
+          <label class="block mb-1 text-sm text-slate-500">模型</label>
           <select
             v-model="selectedModel"
-            class="glass-input px-3 py-2 cursor-pointer"
+            class="px-3 py-2 cursor-pointer glass-input"
           >
             <option
               v-for="m in models"
@@ -159,10 +159,10 @@ function outputCharCount(): number {
           </select>
         </div>
         <div>
-          <label class="text-slate-500 text-sm block mb-1">翻译模式</label>
+          <label class="block mb-1 text-sm text-slate-500">翻译模式</label>
           <select
             v-model="transMode"
-            class="glass-input px-3 py-2 cursor-pointer"
+            class="px-3 py-2 cursor-pointer glass-input"
           >
             <option
               v-for="t in transModes"
@@ -175,36 +175,36 @@ function outputCharCount(): number {
         </div>
         <div
           v-if="transMode === 'custom'"
-          class="flex gap-2 items-end"
+          class="flex items-end gap-2"
         >
           <div>
-            <label class="text-slate-500 text-sm block mb-1">源语言</label>
+            <label class="block mb-1 text-sm text-slate-500">源语言</label>
             <input
               v-model="customSource"
               type="text"
               placeholder="如: 中文"
-              class="glass-input px-3 py-2 w-28 cursor-text"
+              class="px-3 py-2 glass-input w-28 cursor-text"
             />
           </div>
           <span class="text-slate-500">→</span>
           <div>
-            <label class="text-slate-500 text-sm block mb-1">目标语言</label>
+            <label class="block mb-1 text-sm text-slate-500">目标语言</label>
             <input
               v-model="customTarget"
               type="text"
               placeholder="如: 英文"
-              class="glass-input px-3 py-2 w-28 cursor-text"
+              class="px-3 py-2 glass-input w-28 cursor-text"
             />
           </div>
         </div>
       </div>
 
-      <div class="glass-card p-4">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="p-4 glass-card">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div class="flex flex-col">
-            <div class="flex justify-between items-center mb-2">
-              <label class="text-slate-500 text-sm">原文</label>
-              <span class="text-slate-500 text-xs">{{ inputCharCount() }} 字</span>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm text-slate-500">原文</label>
+              <span class="text-xs text-slate-500">{{ inputCharCount() }} 字</span>
             </div>
             <textarea
               v-model="inputText"
@@ -213,9 +213,9 @@ function outputCharCount(): number {
             />
           </div>
           <div class="flex flex-col">
-            <div class="flex justify-between items-center mb-2">
-              <label class="text-slate-500 text-sm">译文</label>
-              <span class="text-slate-500 text-xs">{{ outputCharCount() }} 字</span>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm text-slate-500">译文</label>
+              <span class="text-xs text-slate-500">{{ outputCharCount() }} 字</span>
             </div>
             <textarea
               v-model="outputText"
@@ -228,7 +228,7 @@ function outputCharCount(): number {
 
         <div class="flex flex-wrap gap-2 mt-4">
           <button
-            class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex items-center gap-2 cursor-pointer btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="isTranslating || !inputText.trim()"
             @click="translate"
           >
@@ -236,21 +236,21 @@ function outputCharCount(): number {
             {{ isTranslating ? '翻译中...' : '翻译' }}
           </button>
           <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
+            class="flex items-center gap-2 cursor-pointer btn-secondary"
             @click="swapLanguages"
           >
             <ArrowPathIcon class="w-4 h-4" />
             交换
           </button>
           <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
+            class="flex items-center gap-2 cursor-pointer btn-secondary"
             @click="copyResult"
           >
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制结果
           </button>
           <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
+            class="flex items-center gap-2 cursor-pointer btn-secondary"
             @click="clearAll"
           >
             <TrashIcon class="w-4 h-4" />

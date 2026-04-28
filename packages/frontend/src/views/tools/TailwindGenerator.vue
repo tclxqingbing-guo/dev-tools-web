@@ -20,7 +20,7 @@ type InputMode = 'css' | 'text'
 const inputMode = ref<InputMode>('text')
 const cssInput = ref('')
 const textInput = ref('')
-const model = ref('deepseek-v3.2')
+const model = ref('deepseek-v4-flash')
 const loading = ref(false)
 const resultClasses = ref('')
 
@@ -93,8 +93,8 @@ function copyResult() {
 <template>
   <ToolLayout title="AI Tailwind CSS 生成器">
     <div class="space-y-6">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">输入模式</h3>
+      <div class="p-5 glass-card">
+        <h3 class="mb-4 font-medium text-slate-800">输入模式</h3>
         <div class="flex gap-2 mb-4">
           <button
             :class="[
@@ -119,7 +119,7 @@ function copyResult() {
         </div>
 
         <div v-if="inputMode === 'css'" class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">CSS 代码</label>
+          <label class="block text-sm font-medium text-slate-500">CSS 代码</label>
           <textarea
             v-model="cssInput"
             placeholder="例如：&#10;.box { padding: 1rem; margin: 0.5rem; background: #334155; border-radius: 0.5rem; }"
@@ -127,7 +127,7 @@ function copyResult() {
           />
         </div>
         <div v-else class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">自然语言描述</label>
+          <label class="block text-sm font-medium text-slate-500">自然语言描述</label>
           <textarea
             v-model="textInput"
             placeholder="例如：一个带圆角、深色背景、内边距的卡片容器"
@@ -136,37 +136,37 @@ function copyResult() {
         </div>
 
         <div class="mt-4">
-          <label class="text-slate-500 text-sm font-medium block mb-2">模型</label>
+          <label class="block mb-2 text-sm font-medium text-slate-500">模型</label>
           <select
             v-model="model"
-            class="glass-input px-4 py-2 cursor-pointer"
+            class="px-4 py-2 cursor-pointer glass-input"
           >
             <option v-for="m in chatModels" :key="m.value" :value="m.value">{{ m.label }}</option>
           </select>
         </div>
 
         <button
-          class="btn-primary mt-4 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center gap-2 mt-4 cursor-pointer btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="loading"
           @click="generate"
         >
           <SparklesIcon v-if="!loading" class="w-4 h-4" />
-          <span v-else class="inline-block w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" />
+          <span v-else class="inline-block w-4 h-4 border-2 rounded-full border-slate-300 border-t-white animate-spin" />
           {{ loading ? '生成中...' : '生成' }}
         </button>
       </div>
 
-      <div v-if="resultClasses" class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4 flex items-center gap-2">
+      <div v-if="resultClasses" class="p-5 glass-card">
+        <h3 class="flex items-center gap-2 mb-4 font-medium text-slate-800">
           <SwatchIcon class="w-5 h-5 text-accent" />
           生成的 Tailwind 类
         </h3>
         <div class="flex gap-3 mb-4">
-          <div class="flex-1 p-4 rounded-xl bg-black/30 font-mono text-sm text-slate-600 break-all">
+          <div class="flex-1 p-4 font-mono text-sm break-all rounded-xl bg-black/30 text-slate-600">
             {{ resultClasses }}
           </div>
           <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer flex-shrink-0 self-start"
+            class="flex items-center self-start flex-shrink-0 gap-2 cursor-pointer btn-secondary"
             @click="copyResult"
           >
             <DocumentDuplicateIcon class="w-4 h-4" />
@@ -174,25 +174,25 @@ function copyResult() {
           </button>
         </div>
         <div class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">预览</label>
+          <label class="block text-sm font-medium text-slate-500">预览</label>
           <div
             :class="resultClasses"
             class="border border-slate-200 p-4 min-h-[80px] rounded-xl"
           >
-            <span class="text-slate-400 text-sm">示例内容</span>
+            <span class="text-sm text-slate-400">示例内容</span>
           </div>
         </div>
       </div>
 
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">Tailwind 速查</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="p-5 glass-card">
+        <h3 class="mb-4 font-medium text-slate-800">Tailwind 速查</h3>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div
             v-for="cat in QUICK_REF"
             :key="cat.name"
-            class="p-4 rounded-xl bg-slate-100 border border-slate-200"
+            class="p-4 border rounded-xl bg-slate-100 border-slate-200"
           >
-            <h4 class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">
+            <h4 class="mb-2 text-xs font-medium tracking-wider uppercase text-slate-400">
               {{ cat.name }}
             </h4>
             <div class="flex flex-wrap gap-1.5">

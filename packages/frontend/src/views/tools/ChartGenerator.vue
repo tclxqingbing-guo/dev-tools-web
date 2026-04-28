@@ -26,7 +26,7 @@ const CHART_TYPES = [
   { value: 'gauge', label: '仪表盘' },
 ] as const
 
-const model = ref('deepseek-v3.2')
+const model = ref('ddeepseek-v4-flash')
 const chartType = ref<(typeof CHART_TYPES)[number]['value']>('auto')
 const inputText = ref('')
 const loading = ref(false)

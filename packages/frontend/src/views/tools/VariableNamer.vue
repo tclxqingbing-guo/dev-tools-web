@@ -17,7 +17,7 @@ const suggestions = ref<{ camel: string[]; snake: string[]; pascal: string[] }>(
   pascal: [],
 })
 const isLoading = ref(false)
-const selectedModel = ref('deepseek-v3.2')
+const selectedModel = ref('deepseek-v4-flash')
 
 const SYSTEM_PROMPT = `You are a variable naming assistant. Given a description, output variable names in exactly 3 lines:
 Line 1: camelCase names, comma-separated (e.g. userName, itemCount)
@@ -95,21 +95,21 @@ async function copyName(name: string) {
 <template>
   <ToolLayout title="变量命名助手">
     <div class="space-y-6">
-      <div class="glass-card p-4 flex flex-wrap gap-4 items-end">
+      <div class="flex flex-wrap items-end gap-4 p-4 glass-card">
         <div class="flex-1 min-w-[200px]">
-          <label class="text-slate-500 text-sm block mb-2">变量描述</label>
+          <label class="block mb-2 text-sm text-slate-500">变量描述</label>
           <textarea
             v-model="description"
             placeholder="描述变量用途，例如：用户的全名、商品的数量、是否已登录..."
             class="glass-input w-full min-h-[100px] p-3 resize-none cursor-text"
           />
         </div>
-        <div class="flex gap-3 items-end">
+        <div class="flex items-end gap-3">
           <div>
-            <label class="text-slate-500 text-sm block mb-1">模型</label>
+            <label class="block mb-1 text-sm text-slate-500">模型</label>
             <select
               v-model="selectedModel"
-              class="glass-input px-3 py-2 cursor-pointer"
+              class="px-3 py-2 cursor-pointer glass-input"
             >
               <option
                 v-for="m in models"
@@ -121,7 +121,7 @@ async function copyName(name: string) {
             </select>
           </div>
           <button
-            class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex items-center gap-2 cursor-pointer btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="isLoading || !description.trim()"
             @click="generate"
           >
@@ -133,10 +133,10 @@ async function copyName(name: string) {
 
       <div
         v-if="isLoading"
-        class="glass-card p-8 flex justify-center"
+        class="flex justify-center p-8 glass-card"
       >
         <div
-          class="animate-spin w-10 h-10 border-2 border-accent border-t-transparent rounded-full"
+          class="w-10 h-10 border-2 rounded-full animate-spin border-accent border-t-transparent"
           role="status"
         />
       </div>
@@ -147,19 +147,19 @@ async function copyName(name: string) {
           suggestions.snake.length ||
           suggestions.pascal.length
         "
-        class="grid grid-cols-1 md:grid-cols-3 gap-4"
+        class="grid grid-cols-1 gap-4 md:grid-cols-3"
       >
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">camelCase</h3>
+        <div class="p-4 glass-card">
+          <h3 class="mb-3 font-medium text-slate-800">camelCase</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.camel"
               :key="i"
               class="flex items-center justify-between gap-2 group"
             >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
+              <code class="flex-1 text-sm truncate text-slate-300">{{ name }}</code>
               <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
+                class="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer btn-secondary shrink-0"
                 @click="copyName(name)"
               >
                 <ClipboardDocumentIcon class="w-3.5 h-3.5" />
@@ -168,17 +168,17 @@ async function copyName(name: string) {
             </li>
           </ul>
         </div>
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">snake_case</h3>
+        <div class="p-4 glass-card">
+          <h3 class="mb-3 font-medium text-slate-800">snake_case</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.snake"
               :key="i"
               class="flex items-center justify-between gap-2 group"
             >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
+              <code class="flex-1 text-sm truncate text-slate-300">{{ name }}</code>
               <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
+                class="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer btn-secondary shrink-0"
                 @click="copyName(name)"
               >
                 <ClipboardDocumentIcon class="w-3.5 h-3.5" />
@@ -187,17 +187,17 @@ async function copyName(name: string) {
             </li>
           </ul>
         </div>
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">PascalCase</h3>
+        <div class="p-4 glass-card">
+          <h3 class="mb-3 font-medium text-slate-800">PascalCase</h3>
           <ul class="space-y-2">
             <li
               v-for="(name, i) in suggestions.pascal"
               :key="i"
               class="flex items-center justify-between gap-2 group"
             >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
+              <code class="flex-1 text-sm truncate text-slate-300">{{ name }}</code>
               <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
+                class="flex items-center gap-1 px-2 py-1 text-xs cursor-pointer btn-secondary shrink-0"
                 @click="copyName(name)"
               >
                 <ClipboardDocumentIcon class="w-3.5 h-3.5" />

@@ -2,13 +2,7 @@ import { ref, onMounted } from 'vue'
 import { useApi } from './useApi'
 
 const DEFAULT_CHAT_MODELS = [
-  'deepseek-chat',
-  'deepseek-reasoner',
-  'deepseek-v3.2',
-  'qwen-flash',
-  'qwen3-vl-flash',
-  'qwen3-vl-plus',
-  'qwen3-coder-plus',
+  'deepseek-v4-flash',
 ]
 
 export interface AiModelOption {

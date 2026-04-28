@@ -25,7 +25,7 @@ interface ChatMessage {
 
 const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
-const selectedChatModel = ref('deepseek-v3.2')
+const selectedChatModel = ref('deepseek-v4-flash')
 const isStreaming = ref(false)
 
 function clearChat() {
@@ -170,11 +170,11 @@ function downloadImage() {
       <!-- Chat mode -->
       <div v-if="mode === 'chat'" class="space-y-4">
         <div
-          class="glass-card p-4 flex flex-wrap items-center gap-3"
+          class="flex flex-wrap items-center gap-3 p-4 glass-card"
         >
           <select
             v-model="selectedChatModel"
-            class="glass-input px-3 py-2 cursor-pointer"
+            class="px-3 py-2 cursor-pointer glass-input"
           >
             <option
               v-for="m in chatModels"
@@ -185,7 +185,7 @@ function downloadImage() {
             </option>
           </select>
           <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
+            class="flex items-center gap-2 cursor-pointer btn-secondary"
             @click="clearChat"
           >
             <TrashIcon class="w-4 h-4" />
@@ -219,7 +219,7 @@ function downloadImage() {
                 </div>
                 <div
                   v-else
-                  class="prose prose-invert prose-sm max-w-none"
+                  class="prose-sm prose prose-invert max-w-none"
                   v-html="renderedMarkdown(msg.content)"
                 />
               </div>
@@ -235,7 +235,7 @@ function downloadImage() {
               @keydown.enter.exact.prevent="sendMessage"
             />
             <button
-              class="btn-primary flex items-center gap-2 cursor-pointer self-end disabled:opacity-50 disabled:cursor-not-allowed"
+              class="flex items-center self-end gap-2 cursor-pointer btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="isStreaming || !inputText.trim()"
               @click="sendMessage"
             >
@@ -248,8 +248,8 @@ function downloadImage() {
 
       <!-- Image mode -->
       <div v-else class="space-y-4">
-        <div class="glass-card p-4">
-          <label class="text-slate-500 text-sm block mb-2">描述</label>
+        <div class="p-4 glass-card">
+          <label class="block mb-2 text-sm text-slate-500">描述</label>
           <textarea
             v-model="imagePrompt"
             placeholder="描述你想生成的图片..."
@@ -257,10 +257,10 @@ function downloadImage() {
           />
           <div class="flex flex-wrap gap-3 mt-3">
             <div>
-              <label class="text-slate-500 text-sm block mb-1">尺寸</label>
+              <label class="block mb-1 text-sm text-slate-500">尺寸</label>
               <select
                 v-model="imageSize"
-                class="glass-input px-3 py-2 cursor-pointer"
+                class="px-3 py-2 cursor-pointer glass-input"
               >
                 <option
                   v-for="s in sizeOptions"
@@ -272,10 +272,10 @@ function downloadImage() {
               </select>
             </div>
             <div>
-              <label class="text-slate-500 text-sm block mb-1">模型</label>
+              <label class="block mb-1 text-sm text-slate-500">模型</label>
               <select
                 v-model="imageModel"
-                class="glass-input px-3 py-2 cursor-pointer"
+                class="px-3 py-2 cursor-pointer glass-input"
               >
                 <option
                   v-for="m in imageModels"
@@ -288,7 +288,7 @@ function downloadImage() {
             </div>
             <div class="flex items-end">
               <button
-                class="btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                class="cursor-pointer btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 :disabled="isGenerating || !imagePrompt.trim()"
                 @click="generateImage"
               >
@@ -297,14 +297,14 @@ function downloadImage() {
             </div>
           </div>
         </div>
-        <div v-if="generatedImageUrl" class="glass-card p-4">
+        <div v-if="generatedImageUrl" class="p-4 glass-card">
           <img
             :src="generatedImageUrl"
             alt="Generated"
-            class="max-h-96 rounded-xl border border-slate-200"
+            class="border max-h-96 rounded-xl border-slate-200"
           />
           <button
-            class="btn-secondary flex items-center gap-2 mt-3 cursor-pointer"
+            class="flex items-center gap-2 mt-3 cursor-pointer btn-secondary"
             @click="downloadImage"
           >
             <ArrowDownTrayIcon class="w-4 h-4" />
