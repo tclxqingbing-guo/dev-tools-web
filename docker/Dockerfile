@@ -1,4 +1,6 @@
-FROM node:20-alpine AS base
+ARG BASE_IMAGE_PREFIX=docker.1ms.run/library
+
+FROM ${BASE_IMAGE_PREFIX}/node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
@@ -22,7 +24,7 @@ COPY pnpm-workspace.yaml package.json ./
 COPY packages/backend/ packages/backend/
 RUN cd packages/backend && pnpm run build
 
-FROM node:20-alpine AS backend-runtime
+FROM ${BASE_IMAGE_PREFIX}/node:20-alpine AS backend-runtime
 WORKDIR /app
 COPY --from=backend-build /app/packages/backend/package.json ./
 COPY --from=backend-build /app/packages/backend/dist ./dist
@@ -30,7 +32,7 @@ RUN npm install --omit=dev
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
 
-FROM nginx:alpine AS frontend-runtime
+FROM ${BASE_IMAGE_PREFIX}/nginx:alpine AS frontend-runtime
 COPY --from=frontend-build /app/packages/frontend/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
