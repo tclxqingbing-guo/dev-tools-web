@@ -514,7 +514,7 @@ onUnmounted(() => {
             </div>
           </aside>
 
-          <div class="tool-content-column min-w-0 space-y-3">
+          <div class="min-w-0 space-y-3 tool-content-column">
             <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.14)]">
               <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -564,7 +564,7 @@ onUnmounted(() => {
                 >
                   <div class="space-y-2 text-slate-500">
                     <div class="flex items-center justify-center w-10 h-10 mx-auto rounded-xl bg-slate-100 text-slate-400">
-                      <SparklesIcon class="h-6 w-6" />
+                      <SparklesIcon class="w-6 h-6" />
                     </div>
                     <p class="text-sm font-medium text-slate-700">点击 / 拖拽 / Ctrl+V 粘贴</p>
                     <p class="text-xs leading-5 text-slate-400">
@@ -574,7 +574,7 @@ onUnmounted(() => {
                 </div>
 
                 <div class="rounded-[28px] border border-slate-200/80 bg-white/70 p-3">
-                  <div class="mb-2 flex items-center justify-between gap-3">
+                  <div class="flex items-center justify-between gap-3 mb-2">
                     <h3 class="text-base font-semibold text-slate-800">原图</h3>
                     <span class="text-xs text-slate-400">已加水印截图</span>
                   </div>
@@ -593,7 +593,7 @@ onUnmounted(() => {
             </div>
 
             <div class="result-card glass-card bg-white/82 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-              <div class="mb-2 flex items-center justify-between gap-3">
+              <div class="flex items-center justify-between gap-3 mb-2">
                 <div>
                   <h3 class="text-base font-semibold text-slate-800">还原结果</h3>
                   <!-- <p class="mt-1 text-xs text-slate-400">{{ activeMethod.label }} · {{ grayscale ? '灰度输出' : '彩色输出' }}</p> -->
@@ -611,7 +611,7 @@ onUnmounted(() => {
                   v-else-if="resultPreview"
                   :src="resultPreview"
                   alt="还原结果"
-                  class="h-full max-h-full w-full cursor-zoom-in object-contain"
+                  class="object-contain w-full h-full max-h-full cursor-zoom-in"
                   @click="openImagePreview('还原结果', resultPreview)"
                 >
                 <div v-else-if="lastError" class="preview-placeholder text-rose-500">{{ lastError }}</div>
@@ -638,8 +638,8 @@ onUnmounted(() => {
           >
             <XMarkIcon class="w-6 h-6" />
           </button>
-          <div class="flex h-full w-full flex-col p-4 sm:p-6">
-            <div class="flex items-center justify-between gap-4 pr-14 text-white">
+          <div class="flex flex-col w-full h-full p-4 sm:p-6">
+            <div class="flex items-center justify-between gap-4 text-white pr-14">
               <div>
                 <p class="text-xs uppercase tracking-[0.28em] text-white/60">Preview</p>
                 <h3 class="mt-1 text-lg font-medium">{{ previewState.title }}</h3>
@@ -650,7 +650,7 @@ onUnmounted(() => {
               <img
                 :src="previewState.src"
                 :alt="previewState.title"
-                class="h-full w-full object-contain cursor-zoom-out"
+                class="object-contain w-full h-full cursor-zoom-out"
               >
             </div>
           </div>
@@ -707,7 +707,7 @@ onUnmounted(() => {
   .tool-content-column {
     position: sticky;
     top: 72px;
-    height: calc(100vh - 104px);
+    height: calc(100vh - 154px);
     display: flex;
     flex-direction: column;
     overflow: hidden;

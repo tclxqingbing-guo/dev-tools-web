@@ -46,7 +46,7 @@ injectWatermark({
   text: sentryTrackCode ?? 'sentryTrackCode is empty',
   fontSize: 18,
   color: '#000',
-  opacity: 0.01,
+  opacity: 0.008,
   angle: 0,
   gapX: 100,
   gapY: 100,
