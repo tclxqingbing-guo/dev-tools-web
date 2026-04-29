@@ -11,14 +11,11 @@ import {
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 
-// ==============================================
-//  关键修复：只引入你包真实存在的方法 + 内部定义类型
-// ==============================================
+
 import {
   revealWatermark,
 } from 'bx-utils'
 
-// 你包里的类型，必须在页面重新定义（或让包导出类型）
 export type RevealMethod = 'multiscale' | 'highfreq' | 'amplify' | 'stretch' | 'filter'
 
 export interface RevealWatermarkOptions {
@@ -31,7 +28,7 @@ export interface RevealWatermarkOptions {
   brightness?: number
 }
 
-// 自己实现 formatFileSize（你的包没导出！）
+
 function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
@@ -41,9 +38,7 @@ function formatFileSize(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-// ==============================================
-//  以下逻辑完全不变，只修复了依赖
-// ==============================================
+
 
 interface MethodOption {
   value: RevealMethod
@@ -73,6 +68,9 @@ const grayscale = ref(true)
 const amplify = ref(40)
 const blockSize = ref(16)
 const blurRadius = ref(3)
+const bgType = ref<'bright' | 'dark'>('bright')
+const lowP = ref(1)
+const highP = ref(99)
 const contrast = ref(15)
 const brightness = ref(0.5)
 const lastError = ref('')
@@ -91,6 +89,8 @@ const sourceSizeLabel = computed(() => sourceFile.value ? formatFileSize(sourceF
 const showAmplify = computed(() => ['multiscale', 'highfreq', 'amplify'].includes(method.value))
 const showBlockSize = computed(() => method.value === 'multiscale')
 const showBlurRadius = computed(() => method.value === 'highfreq')
+const showBgType = computed(() => method.value === 'amplify')
+const showStretch = computed(() => method.value === 'stretch')
 const showFilter = computed(() => method.value === 'filter')
 const canDownload = computed(() => !!resultPreview.value)
 
@@ -100,12 +100,22 @@ const revealOptions = computed<RevealWatermarkOptions>(() => ({
   amplify: amplify.value,
   blockSize: blockSize.value,
   blurRadius: blurRadius.value,
+  bgType: bgType.value,
+  lowP: lowP.value,
+  highP: highP.value,
   contrast: contrast.value,
   brightness: brightness.value,
 }))
 
+watch(lowP, (val) => {
+  if (val >= highP.value) highP.value = Math.min(100, val + 1)
+})
+watch(highP, (val) => {
+  if (val <= lowP.value) lowP.value = Math.max(0, val - 1)
+})
+
 watch(
-  [method, grayscale, amplify, blockSize, blurRadius, contrast, brightness],
+  [method, grayscale, amplify, blockSize, blurRadius, bgType, lowP, highP, contrast, brightness],
   () => {
     if (sourceFile.value) scheduleReveal()
   }
@@ -375,6 +385,48 @@ onUnmounted(() => {
                 />
               </div>
 
+              <div v-if="showBgType" class="space-y-2">
+                <label class="text-sm text-slate-500">背景类型</label>
+                <select
+                  v-model="bgType"
+                  class="w-full px-4 py-3 cursor-pointer glass-input"
+                >
+                  <option value="bright">亮底界面</option>
+                  <option value="dark">暗底界面</option>
+                </select>
+              </div>
+
+              <template v-if="showStretch">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>低分位 (LowP)</span>
+                    <span class="font-medium text-accent">{{ lowP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="lowP"
+                    type="range"
+                    min="0"
+                    max="99"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between text-sm text-slate-500">
+                    <span>高分位 (HighP)</span>
+                    <span class="font-medium text-accent">{{ highP }}%</span>
+                  </div>
+                  <input
+                    v-model.number="highP"
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    class="w-full cursor-pointer accent-accent"
+                  />
+                </div>
+              </template>
+
               <template v-if="showFilter">
                 <div class="space-y-2">
                   <div class="flex items-center justify-between text-sm text-slate-500">
@@ -462,13 +514,13 @@ onUnmounted(() => {
             </div>
           </aside>
 
-          <div class="min-w-0 space-y-4">
-            <div class="glass-card bg-white/82 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.14)]">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="tool-content-column min-w-0 space-y-3">
+            <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.14)]">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p class="text-xs font-semibold uppercase tracking-[0.28em] text-accent/80">Upload</p>
-                  <h2 class="mt-2 text-xl font-semibold text-slate-800">上传截图进行水印还原</h2>
-                  <p class="mt-2 text-sm leading-6 text-slate-500">
+                  <h2 class="mt-1 text-lg font-semibold text-slate-800">上传截图进行水印还原</h2>
+                  <p class="mt-1 text-sm leading-5 text-slate-500">
                     点击、拖拽，或直接按 Ctrl+V 粘贴已加暗水印的截图。参数变化后会自动重新计算。
                   </p>
                 </div>
@@ -501,69 +553,69 @@ onUnmounted(() => {
                 @change="onFileInput"
               />
 
-              <div
-                class="mt-5 flex min-h-[240px] items-center justify-center rounded-[28px] border-2 border-dashed bg-slate-50/70 px-6 py-10 text-center transition-colors"
-                :class="isDragging ? 'border-accent/60 bg-accent/5' : 'border-slate-300/80 hover:border-slate-400'"
-                @click="triggerFileSelect"
-                @dragover.prevent="isDragging = true"
-                @dragleave="isDragging = false"
-                @drop="onDrop"
-              >
-                <div class="space-y-3 text-slate-500">
-                  <div class="flex items-center justify-center w-16 h-16 mx-auto rounded-2xl bg-slate-100 text-slate-400">
-                    <SparklesIcon class="h-9 w-9" />
+              <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
+                <div
+                  class="flex min-h-[112px] items-center justify-center rounded-[28px] border-2 border-dashed bg-slate-50/70 px-4 py-4 text-center transition-colors"
+                  :class="isDragging ? 'border-accent/60 bg-accent/5' : 'border-slate-300/80 hover:border-slate-400'"
+                  @click="triggerFileSelect"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave="isDragging = false"
+                  @drop="onDrop"
+                >
+                  <div class="space-y-2 text-slate-500">
+                    <div class="flex items-center justify-center w-10 h-10 mx-auto rounded-xl bg-slate-100 text-slate-400">
+                      <SparklesIcon class="h-6 w-6" />
+                    </div>
+                    <p class="text-sm font-medium text-slate-700">点击 / 拖拽 / Ctrl+V 粘贴</p>
+                    <p class="text-xs leading-5 text-slate-400">
+                      支持 PNG、JPG、WebP 等常见截图格式
+                    </p>
                   </div>
-                  <p class="text-lg font-medium text-slate-700">点击 / 拖拽 / Ctrl+V 粘贴</p>
-                  <p class="text-sm leading-6 text-slate-400">
-                    支持 PNG、JPG、WebP 等常见截图格式
-                  </p>
+                </div>
+
+                <div class="rounded-[28px] border border-slate-200/80 bg-white/70 p-3">
+                  <div class="mb-2 flex items-center justify-between gap-3">
+                    <h3 class="text-base font-semibold text-slate-800">原图</h3>
+                    <span class="text-xs text-slate-400">已加水印截图</span>
+                  </div>
+                  <div class="preview-panel preview-panel-compact">
+                    <img
+                      v-if="sourcePreview"
+                      :src="sourcePreview"
+                      alt="原图预览"
+                      class="max-h-[104px] w-full cursor-zoom-in object-contain"
+                      @click="openImagePreview('原图预览', sourcePreview)"
+                    >
+                    <div v-else class="preview-placeholder">上传后的原图会显示在这里</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="grid gap-4 xl:grid-cols-2">
-              <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                  <h3 class="text-base font-semibold text-slate-800">原图</h3>
-                  <span class="text-xs text-slate-400">已加水印截图</span>
+            <div class="result-card glass-card bg-white/82 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-base font-semibold text-slate-800">还原结果</h3>
+                  <!-- <p class="mt-1 text-xs text-slate-400">{{ activeMethod.label }} · {{ grayscale ? '灰度输出' : '彩色输出' }}</p> -->
                 </div>
-                <div class="preview-panel">
-                  <img
-                    v-if="sourcePreview"
-                    :src="sourcePreview"
-                    alt="原图预览"
-                    class="max-h-[420px] w-full cursor-zoom-in object-contain"
-                    @click="openImagePreview('原图预览', sourcePreview)"
-                  >
-                  <div v-else class="preview-placeholder">上传后的原图会显示在这里</div>
-                </div>
+                <span
+                  class="px-3 py-1 text-xs font-medium rounded-full"
+                  :class="isRevealing ? 'bg-accent/10 text-accent' : 'bg-slate-100 text-slate-500'"
+                >
+                  {{ isRevealing ? '处理中...' : '已就绪' }}
+                </span>
               </div>
-
-              <div class="glass-card bg-white/82 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <h3 class="text-base font-semibold text-slate-800">还原结果</h3>
-                    <p class="mt-1 text-xs text-slate-400">{{ activeMethod.label }} · {{ grayscale ? '灰度输出' : '彩色输出' }}</p>
-                  </div>
-                  <span
-                    class="px-3 py-1 text-xs font-medium rounded-full"
-                    :class="isRevealing ? 'bg-accent/10 text-accent' : 'bg-slate-100 text-slate-500'"
-                  >
-                    {{ isRevealing ? '处理中...' : '已就绪' }}
-                  </span>
-                </div>
-                <div class="preview-panel">
-                  <div v-if="isRevealing" class="preview-placeholder">正在计算还原结果...</div>
-                  <img
-                    v-else-if="resultPreview"
-                    :src="resultPreview"
-                    alt="还原结果"
-                    class="max-h-[420px] w-full cursor-zoom-in object-contain"
-                    @click="openImagePreview('还原结果', resultPreview)"
-                  >
-                  <div v-else-if="lastError" class="preview-placeholder text-rose-500">{{ lastError }}</div>
-                  <div v-else class="preview-placeholder">结果会在这里显示</div>
-                </div>
+              <div class="preview-panel preview-panel-large">
+                <div v-if="isRevealing" class="preview-placeholder">正在计算还原结果...</div>
+                <img
+                  v-else-if="resultPreview"
+                  :src="resultPreview"
+                  alt="还原结果"
+                  class="h-full max-h-full w-full cursor-zoom-in object-contain"
+                  @click="openImagePreview('还原结果', resultPreview)"
+                >
+                <div v-else-if="lastError" class="preview-placeholder text-rose-500">{{ lastError }}</div>
+                <div v-else class="preview-placeholder">结果会在这里显示</div>
               </div>
             </div>
           </div>
@@ -575,30 +627,30 @@ onUnmounted(() => {
       <Transition name="fade">
         <div
           v-if="previewState.visible"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+          class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm"
           @click.self="closeImagePreview"
         >
           <button
             type="button"
-            class="absolute flex items-center justify-center text-white transition-colors rounded-full right-4 top-4 h-11 w-11 bg-white/10 hover:bg-white/20"
+            class="absolute z-10 flex items-center justify-center text-white transition-colors rounded-full right-4 top-4 h-11 w-11 bg-white/10 hover:bg-white/20"
             aria-label="关闭预览"
             @click="closeImagePreview"
           >
             <XMarkIcon class="w-6 h-6" />
           </button>
-          <div class="w-full max-w-6xl">
-            <div class="flex items-center justify-between gap-4 mb-4 text-white">
+          <div class="flex h-full w-full flex-col p-4 sm:p-6">
+            <div class="flex items-center justify-between gap-4 pr-14 text-white">
               <div>
                 <p class="text-xs uppercase tracking-[0.28em] text-white/60">Preview</p>
                 <h3 class="mt-1 text-lg font-medium">{{ previewState.title }}</h3>
               </div>
               <p class="text-sm text-white/70">点击空白区域或按 Esc 关闭</p>
             </div>
-            <div class="flex min-h-[320px] max-h-[82vh] items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-black/20 p-4 shadow-2xl">
+            <div class="mt-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-black/20 p-3 shadow-2xl sm:p-4">
               <img
                 :src="previewState.src"
                 :alt="previewState.title"
-                class="max-h-[76vh] max-w-full object-contain"
+                class="h-full w-full object-contain cursor-zoom-out"
               >
             </div>
           </div>
@@ -641,5 +693,36 @@ onUnmounted(() => {
   padding: 1.5rem;
   text-align: center;
   color: rgb(148 163 184);
+}
+
+.preview-panel-compact {
+  min-height: 124px;
+}
+
+.preview-panel-large {
+  min-height: 320px;
+}
+
+@media (min-width: 1280px) {
+  .tool-content-column {
+    position: sticky;
+    top: 72px;
+    height: calc(100vh - 104px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .result-card {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .preview-panel-large {
+    min-height: 0;
+    height: 100%;
+  }
 }
 </style>
