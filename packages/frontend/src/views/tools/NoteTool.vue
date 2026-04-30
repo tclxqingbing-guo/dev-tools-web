@@ -125,9 +125,9 @@ onMounted(fetchNotes)
   <ToolLayout title="笔记本">
     <div class="flex h-[calc(100vh-7rem)] gap-4">
       <div class="w-72 flex flex-col glass-card p-0 overflow-hidden flex-shrink-0">
-        <div class="p-3 border-b border-slate-200">
+        <div class="p-3 border-b border-slate-200 bg-slate-50/50">
           <div class="relative mb-2">
-            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               v-model="searchQuery"
               type="text"
@@ -140,25 +140,33 @@ onMounted(fetchNotes)
           </button>
         </div>
         <div class="flex-1 overflow-y-auto">
-          <div v-if="filteredNotes.length === 0" class="p-4 text-sm text-center text-slate-500">
-            {{ searchQuery ? '未找到' : '暂无笔记' }}
+          <div v-if="filteredNotes.length === 0" class="p-8 text-sm text-center">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
+              <PencilIcon class="w-6 h-6 text-slate-300" />
+            </div>
+            <p class="text-slate-500">{{ searchQuery ? '未找到匹配笔记' : '暂无笔记' }}</p>
           </div>
           <div
             v-for="note in filteredNotes"
             :key="note.id"
             @click="selectNote(note)"
             :class="[
-              'p-3 border-b border-slate-200 cursor-pointer transition-colors hover:bg-slate-100',
-              currentNote?.id === note.id ? 'bg-accent/10' : ''
+              'p-3 border-b border-slate-100 cursor-pointer transition-all group relative',
+              currentNote?.id === note.id
+                ? 'bg-accent/10 border-l-2 border-l-accent'
+                : 'hover:bg-slate-50 border-l-2 border-l-transparent'
             ]"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-slate-200 truncate">{{ note.title || '无标题' }}</div>
-                <div class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ getPreview(note.content) }}</div>
-                <div class="text-xs text-slate-600 mt-0.5">{{ formatTime(note.updated_at) }}</div>
+                <div class="text-sm font-semibold text-slate-800 truncate">{{ note.title || '无标题' }}</div>
+                <div class="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{{ getPreview(note.content) }}</div>
+                <div class="text-[10px] text-slate-400 mt-1.5">{{ formatTime(note.updated_at) }}</div>
               </div>
-              <button @click.stop="deleteNote(note.id)" class="p-1 text-slate-600 hover:text-red-400 cursor-pointer transition-colors">
+              <button
+                @click.stop="deleteNote(note.id)"
+                class="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
+              >
                 <TrashIcon class="w-3.5 h-3.5" />
               </button>
             </div>
@@ -168,19 +176,28 @@ onMounted(fetchNotes)
 
       <div class="flex-1 glass-card p-0 overflow-hidden flex flex-col">
         <template v-if="currentNote">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50/50">
             <input
               v-model="currentNote.title"
-              class="text-lg font-semibold bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-500 flex-1"
+              class="text-lg font-semibold bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 flex-1"
               placeholder="笔记标题..."
             />
             <div class="flex items-center gap-2">
-              <button @click="editMode = !editMode" class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 cursor-pointer">
-                <PencilIcon v-if="!editMode" class="w-3.5 h-3.5" />
-                <EyeIcon v-else class="w-3.5 h-3.5" />
-                {{ editMode ? '预览' : '编辑' }}
-              </button>
-              <button @click="saveNote" :disabled="saving" class="btn-primary text-xs px-3 py-1.5 cursor-pointer">
+              <div class="inline-flex p-0.5 bg-slate-100 rounded-lg">
+                <button
+                  @click="editMode = true"
+                  :class="['text-xs px-3 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-all', editMode ? 'bg-white text-accent shadow-sm' : 'text-slate-500']"
+                >
+                  <PencilIcon class="w-3.5 h-3.5" /> 编辑
+                </button>
+                <button
+                  @click="editMode = false"
+                  :class="['text-xs px-3 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-all', !editMode ? 'bg-white text-accent shadow-sm' : 'text-slate-500']"
+                >
+                  <EyeIcon class="w-3.5 h-3.5" /> 预览
+                </button>
+              </div>
+              <button @click="saveNote" :disabled="saving" class="btn-primary text-xs px-3 py-1.5 cursor-pointer disabled:opacity-50">
                 {{ saving ? '保存中...' : '保存' }}
               </button>
             </div>
@@ -189,20 +206,23 @@ onMounted(fetchNotes)
             <textarea
               v-if="editMode"
               v-model="currentNote.content"
-              class="w-full h-full p-4 bg-transparent border-none outline-none resize-none text-sm font-mono text-slate-300 placeholder:text-slate-600"
-              placeholder="开始写笔记... (支持 Markdown)"
+              class="w-full h-full p-5 bg-transparent border-none outline-none resize-none text-sm font-mono text-slate-700 placeholder:text-slate-400"
+              placeholder="开始写笔记... (支持 Markdown 语法)"
             />
             <div
               v-else
-              class="p-4 prose prose-invert prose-sm max-w-none text-slate-300"
+              class="p-5 prose prose-sm max-w-none text-slate-700"
               v-html="renderedContent"
             />
           </div>
         </template>
         <div v-else class="flex-1 flex items-center justify-center">
-          <div class="text-center text-slate-600">
-            <PencilIcon class="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>选择或新建一个笔记</p>
+          <div class="text-center">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+              <PencilIcon class="w-8 h-8 text-slate-300" />
+            </div>
+            <p class="text-slate-500">选择或新建一个笔记</p>
+            <p class="text-slate-400 text-xs mt-1">支持 Markdown 语法</p>
           </div>
         </div>
       </div>

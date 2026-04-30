@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
-import { BuildingOfficeIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
+import { BuildingOfficeIcon, ClipboardDocumentIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '../../composables/useToast'
 
 const toast = useToast()
@@ -83,46 +83,74 @@ function copyGenerated() {
 
 <template>
   <ToolLayout title="企业信用代码">
-    <div class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">校验统一社会信用代码</h3>
-        <div class="flex gap-3">
-          <input
-            v-model="validateInput"
-            class="glass-input px-4 py-3 flex-1"
-            placeholder="输入18位统一社会信用代码..."
-            maxlength="18"
-          />
+        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+          <CheckCircleIcon class="w-5 h-5 text-accent" />
+          校验信用代码
+        </h3>
+        <input
+          v-model="validateInput"
+          class="glass-input px-4 py-3 w-full font-mono tracking-wider"
+          placeholder="输入18位统一社会信用代码..."
+          maxlength="18"
+        />
+        <div v-if="validationResult" class="mt-4 flex items-start gap-3 p-3 rounded-xl border"
+          :class="validationResult.valid
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            : 'bg-rose-50 border-rose-200 text-rose-700'">
+          <CheckCircleIcon v-if="validationResult.valid" class="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <XCircleIcon v-else class="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span class="text-sm">{{ validationResult.message }}</span>
         </div>
-        <div v-if="validationResult" class="mt-3 text-sm" :class="validationResult.valid ? 'text-accent' : 'text-red-400'">
-          {{ validationResult.message }}
+        <div v-else class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 text-xs">
+          代码格式：18 位数字 + 大写英文字母（不含 I、O、S、V、Z）
         </div>
       </div>
 
       <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">生成</h3>
-        <div class="flex gap-4 items-end">
-          <div>
-            <label class="block text-slate-500 text-sm mb-2">数量</label>
-            <input v-model.number="genCount" type="number" min="1" max="50" class="glass-input px-4 py-3 w-24" />
+        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+          <BuildingOfficeIcon class="w-5 h-5 text-accent" />
+          生成信用代码
+        </h3>
+        <div class="flex items-end gap-3">
+          <div class="flex-1">
+            <label class="text-slate-500 text-xs block mb-1.5">生成数量</label>
+            <input v-model.number="genCount" type="number" min="1" max="50" class="glass-input px-3 py-2 w-full" />
           </div>
           <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="generate">
             <BuildingOfficeIcon class="w-4 h-4" />
             生成
           </button>
         </div>
+        <div class="grid grid-cols-4 gap-1.5 mt-3">
+          <button
+            v-for="n in [1, 5, 10, 50]" :key="n"
+            type="button"
+            :class="['py-1.5 rounded-lg text-xs cursor-pointer border transition-colors', genCount === n ? 'bg-accent/10 border-accent/30 text-accent font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300']"
+            @click="genCount = n"
+          >{{ n }} 个</button>
+        </div>
       </div>
 
-      <div v-if="generatedCodes.length > 0" class="glass-card p-5">
+      <div v-if="generatedCodes.length > 0" class="glass-card p-5 lg:col-span-2">
         <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-800 font-medium">生成结果</h3>
+          <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+            <span class="w-1 h-4 bg-accent rounded-full" />
+            生成结果
+            <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">{{ generatedCodes.length }}</span>
+          </h3>
           <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
-            复制
+            复制全部
           </button>
         </div>
-        <div class="space-y-1 font-mono text-sm">
-          <div v-for="(code, i) in generatedCodes" :key="i" class="text-slate-300">{{ code }}</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div
+            v-for="(code, i) in generatedCodes" :key="i"
+            class="font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-accent/5 hover:border-accent/30 transition-colors cursor-pointer tracking-wider"
+            @click="() => { navigator.clipboard.writeText(code); toast.success('已复制') }"
+          >{{ code }}</div>
         </div>
       </div>
     </div>

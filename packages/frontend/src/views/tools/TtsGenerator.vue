@@ -347,111 +347,124 @@ onUnmounted(() => {
 
 <template>
   <ToolLayout title="TTS 语音合成">
-    <div class="space-y-6">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">语音配置</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">语言</label>
-            <select
-              v-model="selectedLanguage"
-              class="glass-input w-full px-4 py-2 cursor-pointer"
-              :disabled="!languageOptions.length"
-            >
-              <option v-for="opt in languageOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">性别</label>
-            <select
-              v-model="selectedGender"
-              class="glass-input w-full px-4 py-2 cursor-pointer"
-            >
-              <option value="all">全部</option>
-              <option value="Male">男</option>
-              <option value="Female">女</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <label class="text-slate-500 text-sm font-medium block mb-2">语音</label>
-            <select
-              v-model="voice"
-              class="glass-input w-full px-4 py-2 cursor-pointer"
-              :disabled="!filteredVoiceList.length"
-            >
-              <option v-for="v in filteredVoiceList" :key="v.value" :value="v.value">{{ v.name }}</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <label class="text-slate-500 text-sm font-medium block mb-2">
-              语速: {{ speed.toFixed(2) }}
-            </label>
-            <input
-              v-model.number="speed"
-              type="range"
-              min="0.25"
-              max="4"
-              step="0.05"
-              class="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-200 accent-accent"
-            />
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div class="lg:col-span-2 space-y-5">
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+            <SpeakerWaveIcon class="w-5 h-5 text-accent" />
+            语音配置
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">语言</label>
+              <select
+                v-model="selectedLanguage"
+                class="glass-input w-full px-3 py-2 cursor-pointer text-sm"
+                :disabled="!languageOptions.length"
+              >
+                <option v-for="opt in languageOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">性别</label>
+              <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg">
+                <button
+                  v-for="g in [
+                    { v: 'all', label: '全部' },
+                    { v: 'Male', label: '男' },
+                    { v: 'Female', label: '女' },
+                  ]" :key="g.v"
+                  type="button"
+                  :class="['py-1.5 rounded-md text-sm transition-all cursor-pointer', selectedGender === g.v ? 'bg-white text-accent shadow-sm font-medium' : 'text-slate-500 hover:text-slate-700']"
+                  @click="selectedGender = g.v as 'all' | 'Male' | 'Female'"
+                >{{ g.label }}</button>
+              </div>
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">音色</label>
+              <select
+                v-model="voice"
+                class="glass-input w-full px-3 py-2 cursor-pointer text-sm"
+                :disabled="!filteredVoiceList.length"
+              >
+                <option v-for="v in filteredVoiceList" :key="v.value" :value="v.value">{{ v.name }}</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-slate-500 text-xs">语速</label>
+                <span class="text-xs text-slate-700 font-mono">{{ speed.toFixed(2) }}x</span>
+              </div>
+              <input
+                v-model.number="speed"
+                type="range"
+                min="0.25" max="4" step="0.05"
+                class="w-full accent-accent cursor-pointer"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="glass-card p-5">
-        <label class="text-slate-500 text-sm font-medium block mb-2">输入文本</label>
-        <textarea
-          v-model="text"
-          placeholder="输入要转换为语音的文字..."
-          class="glass-input w-full min-h-[160px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
-        />
-      </div>
-
-      <div class="flex flex-wrap gap-3">
-        <button
-          class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="loading"
-          @click="generate"
-        >
-          <ArrowPathIcon
-            v-if="loading"
-            class="w-4 h-4 animate-spin"
+      <div class="lg:col-span-3 space-y-5">
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输入文本
+            </h3>
+            <span class="text-xs text-slate-400">{{ text.length }} 字</span>
+          </div>
+          <textarea
+            v-model="text"
+            placeholder="输入要转换为语音的文字..."
+            class="glass-input w-full min-h-[200px] p-4 resize-y text-sm"
           />
-          <SpeakerWaveIcon v-else class="w-4 h-4" />
-          {{ loading ? '生成中...' : '生成语音' }}
-        </button>
-      </div>
+          <button
+            class="btn-primary mt-4 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center !py-3"
+            :disabled="loading"
+            @click="generate"
+          >
+            <ArrowPathIcon v-if="loading" class="w-4 h-4 animate-spin" />
+            <SpeakerWaveIcon v-else class="w-4 h-4" />
+            {{ loading ? '生成中...' : '生成语音' }}
+          </button>
+        </div>
 
-      <div v-if="audioUrl" class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">播放与新标签页打开</h3>
-        <audio
-          :key="audioRevision"
-          ref="audioRef"
-          :src="audioUrl || undefined"
-          class="hidden"
-          preload="auto"
-          @play="onAudioPlay"
-          @pause="onAudioPause"
-          @ended="onAudioEnded"
-        />
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            class="btn-primary flex items-center gap-2 cursor-pointer"
-            @click="togglePlayPause"
-          >
-            <PlayIcon v-if="!isPlaying" class="w-4 h-4" />
-            <StopIcon v-else class="w-4 h-4" />
-            {{ isPlaying ? '暂停' : '播放' }}
-          </button>
-          <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
-            @click="downloadAudio"
-          >
-            <ArrowDownTrayIcon class="w-4 h-4" />
-            新标签页打开
-          </button>
+        <div v-if="audioUrl" class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <PlayIcon class="w-5 h-5 text-accent" />
+            播放控制
+          </h3>
+          <audio
+            :key="audioRevision"
+            ref="audioRef"
+            :src="audioUrl || undefined"
+            class="hidden"
+            preload="auto"
+            @play="onAudioPlay"
+            @pause="onAudioPause"
+            @ended="onAudioEnded"
+          />
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              class="btn-primary flex items-center gap-2 cursor-pointer"
+              @click="togglePlayPause"
+            >
+              <PlayIcon v-if="!isPlaying" class="w-4 h-4" />
+              <StopIcon v-else class="w-4 h-4" />
+              {{ isPlaying ? '暂停' : '播放' }}
+            </button>
+            <button
+              class="btn-secondary flex items-center gap-2 cursor-pointer"
+              @click="downloadAudio"
+            >
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              新标签页打开
+            </button>
+          </div>
         </div>
       </div>
     </div>

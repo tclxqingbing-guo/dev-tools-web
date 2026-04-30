@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import { useClipboard } from '../../composables/useClipboard'
-import { ArrowsRightLeftIcon, ClipboardDocumentIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { ArrowsRightLeftIcon, ClipboardDocumentIcon, TrashIcon, ClipboardIcon, LinkIcon } from '@heroicons/vue/24/outline'
 
 const toast = useToast()
 const { copyToClipboard, readFromClipboard } = useClipboard()
@@ -83,44 +83,56 @@ function copyOutput() {
 
 <template>
   <ToolLayout title="URL 编码/解码">
-    <div class="space-y-6">
-      <div class="flex flex-wrap gap-2">
-        <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="encodeUri">
-          <ArrowsRightLeftIcon class="w-4 h-4" />
-          编码URI
-        </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="decodeUri">
-          解码URI
-        </button>
-        <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="encodeComponent">
-          编码组件
-        </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="decodeComponent">
-          解码组件
-        </button>
+    <div class="space-y-5">
+      <div class="glass-card p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <LinkIcon class="w-5 h-5 text-accent" />
+          <h3 class="text-slate-800 font-semibold">编码 / 解码操作</h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button class="btn-primary flex items-center justify-center gap-2 cursor-pointer !py-2.5" @click="encodeUri">
+            <ArrowsRightLeftIcon class="w-4 h-4" />
+            编码 URI
+          </button>
+          <button class="btn-secondary flex items-center justify-center gap-2 cursor-pointer !py-2.5" @click="decodeUri">
+            解码 URI
+          </button>
+          <button class="btn-primary flex items-center justify-center gap-2 cursor-pointer !py-2.5" @click="encodeComponent">
+            编码组件
+          </button>
+          <button class="btn-secondary flex items-center justify-center gap-2 cursor-pointer !py-2.5" @click="decodeComponent">
+            解码组件
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="glass-card p-4 flex flex-col">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-slate-500 text-sm font-medium">输入</label>
-            <button class="btn-secondary flex items-center gap-1.5 px-2 py-1 text-sm cursor-pointer" @click="pasteInput">
-              <TrashIcon class="w-4 h-4" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输入
+            </h3>
+            <button class="text-xs text-slate-500 hover:text-accent flex items-center gap-1 cursor-pointer" @click="pasteInput">
+              <ClipboardIcon class="w-3.5 h-3.5" />
               粘贴
             </button>
           </div>
           <textarea
             v-model="inputText"
             placeholder="请输入要编码或解码的文本..."
-            class="glass-input flex-1 min-h-[200px] p-4 font-mono text-sm resize-none"
+            class="glass-input flex-1 min-h-[260px] p-4 font-mono text-sm resize-none"
           />
         </div>
 
-        <div class="glass-card p-4 flex flex-col bg-surface-card">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-slate-500 text-sm font-medium">输出</label>
-            <button class="btn-secondary flex items-center gap-1.5 px-2 py-1 text-sm cursor-pointer" @click="copyOutput">
-              <ClipboardDocumentIcon class="w-4 h-4" />
+        <div class="glass-card p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输出
+            </h3>
+            <button class="text-xs text-slate-500 hover:text-accent flex items-center gap-1 cursor-pointer" @click="copyOutput">
+              <ClipboardDocumentIcon class="w-3.5 h-3.5" />
               复制
             </button>
           </div>
@@ -128,7 +140,7 @@ function copyOutput() {
             v-model="outputText"
             placeholder="结果将在这里显示..."
             readonly
-            class="glass-input flex-1 min-h-[200px] p-4 font-mono text-sm resize-none bg-slate-100"
+            class="glass-input flex-1 min-h-[260px] p-4 font-mono text-sm resize-none bg-slate-50"
           />
         </div>
       </div>

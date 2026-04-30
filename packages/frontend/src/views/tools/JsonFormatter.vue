@@ -171,65 +171,78 @@ function copyAll() {
 
 <template>
   <ToolLayout title="JSON 格式化">
-    <div class="space-y-6">
-      <div class="flex flex-wrap items-center gap-2">
-        <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="formatJson">
+    <div class="space-y-5">
+      <div class="glass-card px-4 py-3 flex flex-wrap items-center gap-2">
+        <button class="btn-primary flex items-center gap-2 cursor-pointer !py-2" @click="formatJson">
           <ArrowPathIcon class="w-4 h-4" />
           格式化
         </button>
-        <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="formatWithPrettier">
+        <button class="btn-primary flex items-center gap-2 cursor-pointer !py-2" @click="formatWithPrettier">
           <SparklesIcon class="w-4 h-4" />
           Prettier
         </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="compactJson">
+        <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="compactJson">
           <DocumentDuplicateIcon class="w-4 h-4" />
           压缩
         </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="clearAll">
-          <TrashIcon class="w-4 h-4" />
-          清空
-        </button>
+        <div class="h-6 w-px bg-slate-200 mx-1" />
         <button
           v-if="parsedJson"
-          class="btn-secondary flex items-center gap-2 cursor-pointer"
+          class="btn-secondary flex items-center gap-2 cursor-pointer !py-2"
           @click="expandAll"
         >
           <ChevronDownIcon class="w-4 h-4" />
-          展开全部
+          展开
         </button>
         <button
           v-if="parsedJson"
-          class="btn-secondary flex items-center gap-2 cursor-pointer"
+          class="btn-secondary flex items-center gap-2 cursor-pointer !py-2"
           @click="collapseAll"
         >
           <ChevronRightIcon class="w-4 h-4" />
-          折叠全部
+          折叠
         </button>
         <button
           v-if="parsedJson"
-          class="btn-secondary flex items-center gap-2 cursor-pointer"
+          class="btn-secondary flex items-center gap-2 cursor-pointer !py-2"
           @click="copyAll"
         >
           <ClipboardDocumentIcon class="w-4 h-4" />
-          复制全部
+          复制
+        </button>
+        <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 ml-auto" @click="clearAll">
+          <TrashIcon class="w-4 h-4" />
+          清空
         </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="glass-card p-4 flex flex-col">
-          <label class="text-slate-500 text-sm font-medium mb-2">输入</label>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输入
+            </h3>
+            <span class="text-xs text-slate-400">{{ inputJson.length }} 字符</span>
+          </div>
           <textarea
             v-model="inputJson"
             placeholder="请输入或粘贴 JSON 数据..."
-            class="glass-input flex-1 min-h-[400px] p-4 font-mono text-sm resize-none"
+            class="glass-input flex-1 min-h-[480px] p-4 font-mono text-sm resize-none"
             @input="errorMessage = ''"
           />
-          <p v-if="errorMessage" class="mt-2 text-red-400 text-sm">{{ errorMessage }}</p>
+          <p
+            v-if="errorMessage"
+            class="mt-2 text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+          >{{ errorMessage }}</p>
         </div>
 
-        <div class="glass-card p-4 flex flex-col bg-surface-card">
-          <label class="text-slate-500 text-sm font-medium mb-2">树形视图</label>
-          <div class="flex-1 min-h-[400px] overflow-auto p-4 rounded-xl bg-slate-100 font-mono text-sm">
+        <div class="glass-card p-5 flex flex-col">
+          <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2 mb-3">
+            <span class="w-1 h-4 bg-accent rounded-full" />
+            树形视图
+          </h3>
+          <div class="flex-1 min-h-[480px] overflow-auto p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm">
             <JsonNode
               v-if="parsedJson !== null"
               :data="parsedJson"
@@ -239,8 +252,11 @@ function copyAll() {
               @toggle="togglePath"
               @copy="copyNode"
             />
-            <div v-else class="py-10 text-center text-slate-500">
-              格式化后的 JSON 将在这里显示
+            <div v-else class="h-full flex flex-col items-center justify-center text-center">
+              <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3">
+                <SparklesIcon class="w-7 h-7 text-slate-300" />
+              </div>
+              <p class="text-slate-500 text-sm">格式化后的 JSON 将在这里显示</p>
             </div>
           </div>
         </div>

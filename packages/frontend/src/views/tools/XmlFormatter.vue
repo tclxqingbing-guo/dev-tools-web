@@ -211,74 +211,91 @@ function downloadFile() {
 
 <template>
   <ToolLayout title="XML 格式化">
-    <div class="space-y-6">
-      <div class="glass-card p-4">
-        <div class="flex flex-wrap items-center gap-4 mb-4">
-          <div class="flex items-center gap-2">
-            <Cog6ToothIcon class="w-5 h-5 text-slate-500" />
-            <span class="text-slate-500 text-sm">缩进：</span>
-            <select v-model="indentSize" class="glass-input px-3 py-1.5 text-sm cursor-pointer">
+    <div class="space-y-5">
+      <div class="glass-card p-5">
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-200">
+            <Cog6ToothIcon class="w-4 h-4 text-slate-400" />
+            <span class="text-slate-600 text-xs">缩进</span>
+            <select v-model="indentSize" class="bg-transparent border-0 text-sm text-slate-700 cursor-pointer focus:outline-none">
               <option :value="2">2</option>
               <option :value="4">4</option>
               <option :value="8">8</option>
             </select>
           </div>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="preserveComments" type="checkbox" class="rounded cursor-pointer" />
-            <span class="text-slate-500 text-sm">保留注释</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input v-model="preserveComments" type="checkbox" class="rounded cursor-pointer accent-accent" />
+            <span class="text-slate-600 text-sm">保留注释</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="sortAttributes" type="checkbox" class="rounded cursor-pointer" />
-            <span class="text-slate-500 text-sm">属性排序</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input v-model="sortAttributes" type="checkbox" class="rounded cursor-pointer accent-accent" />
+            <span class="text-slate-600 text-sm">属性排序</span>
           </label>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="formatXml">
+          <button class="btn-primary flex items-center gap-2 cursor-pointer !py-2" @click="formatXml">
             <ArrowPathIcon class="w-4 h-4" />
             格式化
           </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="compactXml">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="compactXml">
             <DocumentDuplicateIcon class="w-4 h-4" />
             压缩
           </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="convertToJson">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="convertToJson">
             转 JSON
           </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="validateXml">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="validateXml">
             <CheckCircleIcon class="w-4 h-4" />
             验证
           </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="downloadFile">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 ml-auto" @click="downloadFile">
             <ArrowDownTrayIcon class="w-4 h-4" />
             下载
+          </button>
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="copyToClipboard(outputXml)">
+            <DocumentDuplicateIcon class="w-4 h-4" />
+            复制
           </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="glass-card p-4 flex flex-col">
-          <label class="text-slate-500 text-sm font-medium mb-2">输入</label>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输入
+            </h3>
+            <span class="text-xs text-slate-400">{{ inputXml.length }} 字符</span>
+          </div>
           <textarea
             v-model="inputXml"
             placeholder="请输入或粘贴 XML..."
-            class="glass-input flex-1 min-h-[350px] p-4 font-mono text-sm resize-none"
+            class="glass-input flex-1 min-h-[400px] p-4 font-mono text-sm resize-none"
           />
-          <p v-if="errorMessage" class="mt-2 text-red-400 text-sm">{{ errorMessage }}</p>
+          <p
+            v-if="errorMessage"
+            class="mt-2 text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+          >{{ errorMessage }}</p>
         </div>
 
-        <div class="glass-card p-4 flex flex-col bg-surface-card">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-slate-500 text-sm font-medium">输出</label>
-            <div class="flex gap-3 text-slate-500 text-xs">
-              <span>元素: {{ stats.elements }}</span>
-              <span>属性: {{ stats.attributes }}</span>
-              <span>深度: {{ stats.depth }}</span>
+        <div class="glass-card p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-700 text-sm font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              输出
+            </h3>
+            <div class="flex gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-200">元素 {{ stats.elements }}</span>
+              <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200">属性 {{ stats.attributes }}</span>
+              <span class="px-2 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-200">深度 {{ stats.depth }}</span>
             </div>
           </div>
           <pre
-            class="flex-1 min-h-[350px] overflow-auto p-4 rounded-xl bg-slate-800 font-mono text-sm whitespace-pre-wrap text-slate-200"
-            v-html="highlightXml(outputXml || '')"
+            class="flex-1 min-h-[400px] overflow-auto p-4 rounded-xl bg-slate-900 font-mono text-sm whitespace-pre-wrap text-slate-200"
+            v-html="outputXml ? highlightXml(outputXml) : ''"
           />
+          <div v-if="!outputXml" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-500 text-sm" />
         </div>
       </div>
     </div>

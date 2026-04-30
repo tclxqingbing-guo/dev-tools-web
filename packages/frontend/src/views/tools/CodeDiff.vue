@@ -172,77 +172,91 @@ function copyDiff() {
 
 <template>
   <ToolLayout title="代码对比">
-    <div class="space-y-6">
+    <div class="space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="glass-card p-5">
-          <label class="block text-sm font-medium text-slate-500 mb-2">原始代码</label>
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <span class="w-1 h-4 bg-rose-400 rounded-full" />
+              原始代码
+            </label>
+            <span class="text-xs text-slate-400">{{ original.split('\n').length }} 行</span>
+          </div>
           <textarea
             v-model="original"
-            class="glass-input px-4 py-3 w-full min-h-[200px] font-mono text-sm resize-y"
+            class="glass-input px-4 py-3 w-full min-h-[220px] font-mono text-sm resize-y"
             placeholder="粘贴原始代码..."
             spellcheck="false"
           />
         </div>
         <div class="glass-card p-5">
-          <label class="block text-sm font-medium text-slate-500 mb-2">修改后代码</label>
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <span class="w-1 h-4 bg-emerald-400 rounded-full" />
+              修改后代码
+            </label>
+            <span class="text-xs text-slate-400">{{ modified.split('\n').length }} 行</span>
+          </div>
           <textarea
             v-model="modified"
-            class="glass-input px-4 py-3 w-full min-h-[200px] font-mono text-sm resize-y"
+            class="glass-input px-4 py-3 w-full min-h-[220px] font-mono text-sm resize-y"
             placeholder="粘贴修改后代码..."
             spellcheck="false"
           />
         </div>
       </div>
 
-      <div class="glass-card p-5 flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
+      <div class="glass-card p-4 flex flex-wrap items-center gap-4">
+        <div class="inline-flex gap-1 p-1 bg-slate-100 rounded-lg">
           <button
             @click="viewMode = 'split'"
-            :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer', viewMode === 'split' ? 'btn-primary' : 'btn-secondary']"
+            :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all', viewMode === 'split' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700']"
           >
             <Squares2X2Icon class="w-4 h-4" />
             分屏
           </button>
           <button
             @click="viewMode = 'unified'"
-            :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer', viewMode === 'unified' ? 'btn-primary' : 'btn-secondary']"
+            :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all', viewMode === 'unified' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700']"
           >
             <DocumentDuplicateIcon class="w-4 h-4" />
             统一
           </button>
         </div>
-        <div class="flex items-center gap-4 text-sm">
-          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
-            <input v-model="ignoreWhitespace" type="checkbox" class="rounded cursor-pointer" />
-            忽略空白
+        <div class="h-6 w-px bg-slate-200" />
+        <div class="flex items-center gap-3 text-sm">
+          <label class="flex items-center gap-1.5 text-slate-600 cursor-pointer">
+            <input v-model="ignoreWhitespace" type="checkbox" class="rounded cursor-pointer accent-accent" />
+            空白
           </label>
-          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
-            <input v-model="ignoreLineBreaks" type="checkbox" class="rounded cursor-pointer" />
-            忽略换行
+          <label class="flex items-center gap-1.5 text-slate-600 cursor-pointer">
+            <input v-model="ignoreLineBreaks" type="checkbox" class="rounded cursor-pointer accent-accent" />
+            换行
           </label>
-          <label class="flex items-center gap-2 text-slate-600 cursor-pointer">
-            <input v-model="ignoreCase" type="checkbox" class="rounded cursor-pointer" />
-            忽略大小写
+          <label class="flex items-center gap-1.5 text-slate-600 cursor-pointer">
+            <input v-model="ignoreCase" type="checkbox" class="rounded cursor-pointer accent-accent" />
+            大小写
           </label>
         </div>
-        <div class="flex items-center gap-2 text-slate-500 text-sm">
-          <span>+{{ stats.additions }}</span>
-          <span>-{{ stats.deletions }}</span>
-          <span v-if="stats.changes">~{{ stats.changes }}</span>
+        <div class="h-6 w-px bg-slate-200" />
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200 font-mono">+{{ stats.additions }}</span>
+          <span class="px-2 py-1 rounded-md bg-rose-50 text-rose-600 border border-rose-200 font-mono">-{{ stats.deletions }}</span>
+          <span v-if="stats.changes" class="px-2 py-1 rounded-md bg-amber-50 text-amber-600 border border-amber-200 font-mono">~{{ stats.changes }}</span>
         </div>
         <div class="flex-1" />
         <div class="flex items-center gap-2">
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="swap">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-1.5 text-sm" @click="swap">
             <ArrowsRightLeftIcon class="w-4 h-4" />
             交换
           </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="clearAll">
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-1.5 text-sm" @click="clearAll">
             <TrashIcon class="w-4 h-4" />
             清空
           </button>
-          <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="copyDiff">
+          <button class="btn-primary flex items-center gap-2 cursor-pointer !py-1.5 text-sm" @click="copyDiff">
             <ClipboardDocumentIcon class="w-4 h-4" />
-            复制结果
+            复制差异
           </button>
         </div>
       </div>
@@ -255,38 +269,42 @@ function copyDiff() {
         >
           <template v-if="viewMode === 'split'">
             <div class="space-y-0">
-              <div class="text-slate-500 text-xs mb-2">原始</div>
+              <div class="text-slate-500 text-xs mb-2 font-semibold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-400" /> 原始
+              </div>
               <div
                 v-for="(line, i) in diffLines"
                 :key="'old-' + i"
                 class="flex"
-                :class="line.type === 'remove' ? 'bg-red-500/10' : ''"
+                :class="line.type === 'remove' ? 'bg-rose-50' : ''"
               >
-                <span class="select-none w-10 text-right pr-2 text-slate-500 flex-shrink-0">{{ i + 1 }}</span>
+                <span class="select-none w-10 text-right pr-2 text-slate-400 flex-shrink-0">{{ i + 1 }}</span>
                 <span v-if="line.oldCharDiffs" class="flex-1 break-all">
                   <span
                     v-for="(seg, j) in line.oldCharDiffs"
                     :key="j"
-                    :class="seg.removed ? 'bg-red-500/30' : ''"
+                    :class="seg.removed ? 'bg-rose-200/70 text-rose-800' : ''"
                   >{{ seg.value }}</span>
                 </span>
                 <span v-else-if="line.oldLine !== undefined" class="flex-1 break-all">{{ line.oldLine }}</span>
               </div>
             </div>
             <div class="space-y-0">
-              <div class="text-slate-500 text-xs mb-2">修改后</div>
+              <div class="text-slate-500 text-xs mb-2 font-semibold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" /> 修改后
+              </div>
               <div
                 v-for="(line, i) in diffLines"
                 :key="'new-' + i"
                 class="flex"
-                :class="line.type === 'add' ? 'bg-emerald-500/10' : ''"
+                :class="line.type === 'add' ? 'bg-emerald-50' : ''"
               >
-                <span class="select-none w-10 text-right pr-2 text-slate-500 flex-shrink-0">{{ i + 1 }}</span>
+                <span class="select-none w-10 text-right pr-2 text-slate-400 flex-shrink-0">{{ i + 1 }}</span>
                 <span v-if="line.newCharDiffs" class="flex-1 break-all">
                   <span
                     v-for="(seg, j) in line.newCharDiffs"
                     :key="j"
-                    :class="seg.added ? 'bg-emerald-500/30' : seg.removed ? 'bg-red-500/30' : ''"
+                    :class="seg.added ? 'bg-emerald-200/70 text-emerald-800' : seg.removed ? 'bg-rose-200/70 text-rose-800' : ''"
                   >{{ seg.value }}</span>
                 </span>
                 <span v-else-if="line.newLine !== undefined" class="flex-1 break-all">{{ line.newLine }}</span>
@@ -298,25 +316,26 @@ function copyDiff() {
               v-for="(line, i) in diffLines"
               :key="i"
               class="flex"
-              :class="line.type === 'add' ? 'bg-emerald-500/10' : line.type === 'remove' ? 'bg-red-500/10' : ''"
+              :class="line.type === 'add' ? 'bg-emerald-50' : line.type === 'remove' ? 'bg-rose-50' : ''"
             >
-              <span class="select-none w-10 text-right pr-2 text-slate-500 flex-shrink-0">{{ i + 1 }}</span>
+              <span class="select-none w-10 text-right pr-2 text-slate-400 flex-shrink-0">{{ i + 1 }}</span>
               <span v-if="line.type === 'add' && line.newCharDiffs" class="flex-1 break-all">
-                <span v-for="(seg, j) in line.newCharDiffs" :key="j" :class="seg.added ? 'bg-emerald-500/30' : ''">{{
-                  seg.value
-                }}</span>
+                <span v-for="(seg, j) in line.newCharDiffs" :key="j" :class="seg.added ? 'bg-emerald-200/70 text-emerald-800' : ''">{{ seg.value }}</span>
               </span>
               <span v-else-if="line.type === 'remove' && line.oldCharDiffs" class="flex-1 break-all">
-                <span v-for="(seg, j) in line.oldCharDiffs" :key="j" :class="seg.removed ? 'bg-red-500/30' : ''">{{
-                  seg.value
-                }}</span>
+                <span v-for="(seg, j) in line.oldCharDiffs" :key="j" :class="seg.removed ? 'bg-rose-200/70 text-rose-800' : ''">{{ seg.value }}</span>
               </span>
               <span v-else-if="line.oldLine !== undefined" class="flex-1 break-all">{{ line.oldLine }}</span>
               <span v-else-if="line.newLine !== undefined" class="flex-1 break-all">{{ line.newLine }}</span>
             </div>
           </div>
         </div>
-        <div v-else class="text-slate-500 text-center py-12">输入两段代码以查看差异</div>
+        <div v-else class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+            <ArrowsRightLeftIcon class="w-7 h-7 text-slate-300" />
+          </div>
+          <p class="text-slate-500 text-sm">输入两段代码以查看差异</p>
+        </div>
       </div>
     </div>
   </ToolLayout>

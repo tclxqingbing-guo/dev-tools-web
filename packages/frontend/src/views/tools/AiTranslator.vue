@@ -141,118 +141,83 @@ function outputCharCount(): number {
 
 <template>
   <ToolLayout title="AI 翻译">
-    <div class="space-y-6">
-      <div class="glass-card p-4 flex flex-wrap gap-4 items-end">
-        <div>
-          <label class="text-slate-500 text-sm block mb-1">模型</label>
-          <select
-            v-model="selectedModel"
-            class="glass-input px-3 py-2 cursor-pointer"
-          >
-            <option
-              v-for="m in models"
-              :key="m.value"
-              :value="m.value"
-            >
-              {{ m.label }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="text-slate-500 text-sm block mb-1">翻译模式</label>
-          <select
-            v-model="transMode"
-            class="glass-input px-3 py-2 cursor-pointer"
-          >
-            <option
-              v-for="t in transModes"
-              :key="t.value"
-              :value="t.value"
-            >
-              {{ t.label }}
-            </option>
-          </select>
-        </div>
-        <div
-          v-if="transMode === 'custom'"
-          class="flex gap-2 items-end"
-        >
+    <div class="space-y-5">
+      <div class="glass-card p-5">
+        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+          <LanguageIcon class="w-5 h-5 text-accent" />
+          翻译设置
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label class="text-slate-500 text-sm block mb-1">源语言</label>
-            <input
-              v-model="customSource"
-              type="text"
-              placeholder="如: 中文"
-              class="glass-input px-3 py-2 w-28 cursor-text"
-            />
+            <label class="text-slate-500 text-xs block mb-1.5">模型</label>
+            <select v-model="selectedModel" class="glass-input px-3 py-2 cursor-pointer w-full text-sm">
+              <option v-for="m in models" :key="m.value" :value="m.value">{{ m.label }}</option>
+            </select>
           </div>
-          <span class="text-slate-500">→</span>
           <div>
-            <label class="text-slate-500 text-sm block mb-1">目标语言</label>
-            <input
-              v-model="customTarget"
-              type="text"
-              placeholder="如: 英文"
-              class="glass-input px-3 py-2 w-28 cursor-text"
-            />
+            <label class="text-slate-500 text-xs block mb-1.5">翻译模式</label>
+            <select v-model="transMode" class="glass-input px-3 py-2 cursor-pointer w-full text-sm">
+              <option v-for="t in transModes" :key="t.value" :value="t.value">{{ t.label }}</option>
+            </select>
           </div>
+          <template v-if="transMode === 'custom'">
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">源语言</label>
+              <input v-model="customSource" type="text" placeholder="如: 中文" class="glass-input px-3 py-2 w-full text-sm" />
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">目标语言</label>
+              <input v-model="customTarget" type="text" placeholder="如: 英文" class="glass-input px-3 py-2 w-full text-sm" />
+            </div>
+          </template>
         </div>
       </div>
 
-      <div class="glass-card p-4">
+      <div class="glass-card p-5">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="flex flex-col">
             <div class="flex justify-between items-center mb-2">
-              <label class="text-slate-500 text-sm">原文</label>
-              <span class="text-slate-500 text-xs">{{ inputCharCount() }} 字</span>
+              <label class="text-slate-700 text-sm font-medium">原文</label>
+              <span class="text-slate-400 text-xs">{{ inputCharCount() }} 字</span>
             </div>
             <textarea
               v-model="inputText"
               placeholder="输入要翻译的文本..."
-              class="glass-input flex-1 min-h-[200px] p-3 resize-none cursor-text"
+              class="glass-input flex-1 min-h-[260px] p-3 resize-none text-sm"
             />
           </div>
           <div class="flex flex-col">
             <div class="flex justify-between items-center mb-2">
-              <label class="text-slate-500 text-sm">译文</label>
-              <span class="text-slate-500 text-xs">{{ outputCharCount() }} 字</span>
+              <label class="text-slate-700 text-sm font-medium">译文</label>
+              <span class="text-slate-400 text-xs">{{ outputCharCount() }} 字</span>
             </div>
             <textarea
               v-model="outputText"
               placeholder="翻译结果..."
               readonly
-              class="glass-input flex-1 min-h-[200px] p-3 resize-none bg-slate-100 cursor-default"
+              class="glass-input flex-1 min-h-[260px] p-3 resize-none bg-slate-50 text-sm"
             />
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 mt-4">
+        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
           <button
             class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="isTranslating || !inputText.trim()"
             @click="translate"
           >
             <LanguageIcon class="w-4 h-4" />
-            {{ isTranslating ? '翻译中...' : '翻译' }}
+            {{ isTranslating ? '翻译中...' : '开始翻译' }}
           </button>
-          <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
-            @click="swapLanguages"
-          >
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="swapLanguages">
             <ArrowPathIcon class="w-4 h-4" />
             交换
           </button>
-          <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
-            @click="copyResult"
-          >
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyResult">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制结果
           </button>
-          <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer"
-            @click="clearAll"
-          >
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer ml-auto" @click="clearAll">
             <TrashIcon class="w-4 h-4" />
             清空
           </button>

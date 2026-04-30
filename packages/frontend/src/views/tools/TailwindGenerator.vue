@@ -92,118 +92,124 @@ function copyResult() {
 
 <template>
   <ToolLayout title="AI Tailwind CSS 生成器">
-    <div class="space-y-6">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">输入模式</h3>
-        <div class="flex gap-2 mb-4">
-          <button
-            :class="[
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors',
-              inputMode === 'css' ? 'btn-primary' : 'btn-secondary'
-            ]"
-            @click="inputMode = 'css'"
-          >
-            <CodeBracketSquareIcon class="w-4 h-4" />
-            CSS 样式
-          </button>
-          <button
-            :class="[
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors',
-              inputMode === 'text' ? 'btn-primary' : 'btn-secondary'
-            ]"
-            @click="inputMode = 'text'"
-          >
-            <ChatBubbleLeftRightIcon class="w-4 h-4" />
-            自然语言描述
-          </button>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div class="space-y-5">
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+            <SparklesIcon class="w-5 h-5 text-accent" />
+            输入
+          </h3>
+          <div class="inline-flex gap-1 p-1 bg-slate-100 rounded-xl mb-4">
+            <button
+              :class="[
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all',
+                inputMode === 'css' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              ]"
+              @click="inputMode = 'css'"
+            >
+              <CodeBracketSquareIcon class="w-4 h-4" />
+              CSS 转换
+            </button>
+            <button
+              :class="[
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all',
+                inputMode === 'text' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              ]"
+              @click="inputMode = 'text'"
+            >
+              <ChatBubbleLeftRightIcon class="w-4 h-4" />
+              自然语言
+            </button>
+          </div>
 
-        <div v-if="inputMode === 'css'" class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">CSS 代码</label>
           <textarea
+            v-if="inputMode === 'css'"
             v-model="cssInput"
-            placeholder="例如：&#10;.box { padding: 1rem; margin: 0.5rem; background: #334155; border-radius: 0.5rem; }"
-            class="glass-input w-full min-h-[120px] p-4 text-slate-800 placeholder:text-slate-500 font-mono text-sm resize-y"
+            placeholder="粘贴 CSS 代码：&#10;.box { padding: 1rem; background: #334155; border-radius: 0.5rem; }"
+            class="glass-input w-full min-h-[160px] p-4 font-mono text-sm resize-y"
           />
-        </div>
-        <div v-else class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">自然语言描述</label>
           <textarea
+            v-else
             v-model="textInput"
-            placeholder="例如：一个带圆角、深色背景、内边距的卡片容器"
-            class="glass-input w-full min-h-[120px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
+            placeholder="描述你想要的样式：&#10;一个带圆角、深色背景、内边距的卡片容器"
+            class="glass-input w-full min-h-[160px] p-4 text-sm resize-y"
           />
+
+          <div class="flex items-center justify-between gap-3 mt-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">模型</span>
+              <select v-model="model" class="glass-input px-3 py-1.5 cursor-pointer text-sm">
+                <option v-for="m in chatModels" :key="m.value" :value="m.value">{{ m.label }}</option>
+              </select>
+            </div>
+            <button
+              class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="loading"
+              @click="generate"
+            >
+              <SparklesIcon v-if="!loading" class="w-4 h-4" />
+              <span v-else class="inline-block w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" />
+              {{ loading ? '生成中...' : '生成' }}
+            </button>
+          </div>
         </div>
 
-        <div class="mt-4">
-          <label class="text-slate-500 text-sm font-medium block mb-2">模型</label>
-          <select
-            v-model="model"
-            class="glass-input px-4 py-2 cursor-pointer"
-          >
-            <option v-for="m in chatModels" :key="m.value" :value="m.value">{{ m.label }}</option>
-          </select>
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <CodeBracketSquareIcon class="w-5 h-5 text-accent" />
+            Tailwind 速查
+          </h3>
+          <div class="space-y-3">
+            <div v-for="cat in QUICK_REF" :key="cat.name">
+              <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1.5">
+                {{ cat.name }}
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <code
+                  v-for="ex in cat.examples" :key="ex"
+                  class="px-2 py-0.5 rounded bg-slate-100 hover:bg-accent/10 hover:text-accent text-slate-600 text-xs font-mono cursor-pointer transition-colors"
+                  @click="resultClasses = resultClasses ? `${resultClasses} ${ex}` : ex"
+                >
+                  {{ ex }}
+                </code>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <button
-          class="btn-primary mt-4 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="loading"
-          @click="generate"
-        >
-          <SparklesIcon v-if="!loading" class="w-4 h-4" />
-          <span v-else class="inline-block w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" />
-          {{ loading ? '生成中...' : '生成' }}
-        </button>
       </div>
 
-      <div v-if="resultClasses" class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4 flex items-center gap-2">
-          <SwatchIcon class="w-5 h-5 text-accent" />
-          生成的 Tailwind 类
-        </h3>
-        <div class="flex gap-3 mb-4">
-          <div class="flex-1 p-4 rounded-xl bg-black/30 font-mono text-sm text-slate-600 break-all">
+      <div class="space-y-5">
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <SwatchIcon class="w-5 h-5 text-accent" />
+              生成结果
+            </h3>
+            <button
+              v-if="resultClasses"
+              class="btn-secondary flex items-center gap-1.5 cursor-pointer !py-1.5 !px-3 text-xs"
+              @click="copyResult"
+            >
+              <DocumentDuplicateIcon class="w-3.5 h-3.5" />
+              复制
+            </button>
+          </div>
+          <div v-if="resultClasses" class="p-4 rounded-xl bg-slate-900 font-mono text-sm text-emerald-200 break-all min-h-[80px]">
             {{ resultClasses }}
           </div>
-          <button
-            class="btn-secondary flex items-center gap-2 cursor-pointer flex-shrink-0 self-start"
-            @click="copyResult"
-          >
-            <DocumentDuplicateIcon class="w-4 h-4" />
-            复制
-          </button>
-        </div>
-        <div class="space-y-2">
-          <label class="text-slate-500 text-sm font-medium block">预览</label>
-          <div
-            :class="resultClasses"
-            class="border border-slate-200 p-4 min-h-[80px] rounded-xl"
-          >
-            <span class="text-slate-400 text-sm">示例内容</span>
+          <div v-else class="p-8 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+            <p class="text-slate-400 text-sm">{{ loading ? 'AI 正在生成...' : '生成的 Tailwind 类将在这里显示' }}</p>
           </div>
         </div>
-      </div>
 
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">Tailwind 速查</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="cat in QUICK_REF"
-            :key="cat.name"
-            class="p-4 rounded-xl bg-slate-100 border border-slate-200"
-          >
-            <h4 class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">
-              {{ cat.name }}
-            </h4>
-            <div class="flex flex-wrap gap-1.5">
-              <code
-                v-for="ex in cat.examples"
-                :key="ex"
-                class="px-2 py-0.5 rounded bg-slate-200 text-slate-600 text-xs font-mono cursor-pointer hover:bg-accent/20 hover:text-accent"
-                @click="resultClasses = resultClasses ? `${resultClasses} ${ex}` : ex"
-              >
-                {{ ex }}
-              </code>
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <SwatchIcon class="w-5 h-5 text-accent" />
+            实时预览
+          </h3>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[120px] flex items-center justify-center">
+            <div :class="resultClasses || 'p-4 bg-white border border-slate-200 rounded'">
+              <span class="text-slate-500 text-sm">示例内容 Sample Content</span>
             </div>
           </div>
         </div>

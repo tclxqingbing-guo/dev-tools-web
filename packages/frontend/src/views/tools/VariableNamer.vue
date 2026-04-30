@@ -94,30 +94,22 @@ async function copyName(name: string) {
 
 <template>
   <ToolLayout title="变量命名助手">
-    <div class="space-y-6">
-      <div class="glass-card p-4 flex flex-wrap gap-4 items-end">
-        <div class="flex-1 min-w-[200px]">
-          <label class="text-slate-500 text-sm block mb-2">变量描述</label>
-          <textarea
-            v-model="description"
-            placeholder="描述变量用途，例如：用户的全名、商品的数量、是否已登录..."
-            class="glass-input w-full min-h-[100px] p-3 resize-none cursor-text"
-          />
-        </div>
-        <div class="flex gap-3 items-end">
-          <div>
-            <label class="text-slate-500 text-sm block mb-1">模型</label>
-            <select
-              v-model="selectedModel"
-              class="glass-input px-3 py-2 cursor-pointer"
-            >
-              <option
-                v-for="m in models"
-                :key="m.value"
-                :value="m.value"
-              >
-                {{ m.label }}
-              </option>
+    <div class="space-y-5">
+      <div class="glass-card p-5">
+        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+          <VariableIcon class="w-5 h-5 text-accent" />
+          变量描述
+        </h3>
+        <textarea
+          v-model="description"
+          placeholder="描述变量用途，例如：用户的全名、商品的数量、是否已登录..."
+          class="glass-input w-full min-h-[100px] p-3 resize-none text-sm"
+        />
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500">模型</span>
+            <select v-model="selectedModel" class="glass-input px-3 py-1.5 cursor-pointer text-sm">
+              <option v-for="m in models" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
           </div>
           <button
@@ -131,81 +123,46 @@ async function copyName(name: string) {
         </div>
       </div>
 
-      <div
-        v-if="isLoading"
-        class="glass-card p-8 flex justify-center"
-      >
-        <div
-          class="animate-spin w-10 h-10 border-2 border-accent border-t-transparent rounded-full"
-          role="status"
-        />
+      <div v-if="isLoading" class="glass-card p-12 flex flex-col items-center justify-center">
+        <div class="animate-spin w-10 h-10 border-2 border-accent border-t-transparent rounded-full mb-3" role="status" />
+        <p class="text-slate-500 text-sm">AI 正在思考命名方案...</p>
       </div>
 
       <div
-        v-else-if="
-          suggestions.camel.length ||
-          suggestions.snake.length ||
-          suggestions.pascal.length
-        "
+        v-else-if="suggestions.camel.length || suggestions.snake.length || suggestions.pascal.length"
         class="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">camelCase</h3>
-          <ul class="space-y-2">
+        <div
+          v-for="(group, idx) in [
+            { title: 'camelCase', list: suggestions.camel, color: 'bg-blue-400' },
+            { title: 'snake_case', list: suggestions.snake, color: 'bg-emerald-400' },
+            { title: 'PascalCase', list: suggestions.pascal, color: 'bg-violet-400' },
+          ]"
+          :key="idx"
+          class="glass-card p-5"
+        >
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" :class="group.color" />
+            {{ group.title }}
+          </h3>
+          <ul class="space-y-1.5">
             <li
-              v-for="(name, i) in suggestions.camel"
-              :key="i"
-              class="flex items-center justify-between gap-2 group"
+              v-for="(name, i) in group.list" :key="i"
+              class="group flex items-center justify-between gap-2 bg-slate-50 hover:bg-accent/5 rounded-lg px-3 py-2 transition-colors cursor-pointer"
+              @click="copyName(name)"
             >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
-              <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
-                @click="copyName(name)"
-              >
-                <ClipboardDocumentIcon class="w-3.5 h-3.5" />
-                复制
-              </button>
+              <code class="text-slate-700 text-sm font-mono flex-1 truncate">{{ name }}</code>
+              <ClipboardDocumentIcon class="w-4 h-4 text-slate-300 group-hover:text-accent transition-colors flex-shrink-0" />
             </li>
           </ul>
         </div>
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">snake_case</h3>
-          <ul class="space-y-2">
-            <li
-              v-for="(name, i) in suggestions.snake"
-              :key="i"
-              class="flex items-center justify-between gap-2 group"
-            >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
-              <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
-                @click="copyName(name)"
-              >
-                <ClipboardDocumentIcon class="w-3.5 h-3.5" />
-                复制
-              </button>
-            </li>
-          </ul>
+      </div>
+
+      <div v-else class="glass-card p-12 flex flex-col items-center justify-center text-center">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+          <VariableIcon class="w-8 h-8 text-slate-300" />
         </div>
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">PascalCase</h3>
-          <ul class="space-y-2">
-            <li
-              v-for="(name, i) in suggestions.pascal"
-              :key="i"
-              class="flex items-center justify-between gap-2 group"
-            >
-              <code class="text-slate-300 text-sm flex-1 truncate">{{ name }}</code>
-              <button
-                class="btn-secondary px-2 py-1 text-xs cursor-pointer shrink-0 flex items-center gap-1"
-                @click="copyName(name)"
-              >
-                <ClipboardDocumentIcon class="w-3.5 h-3.5" />
-                复制
-              </button>
-            </li>
-          </ul>
-        </div>
+        <p class="text-slate-500 text-sm">输入变量描述后，AI 会生成多种命名风格</p>
       </div>
     </div>
   </ToolLayout>

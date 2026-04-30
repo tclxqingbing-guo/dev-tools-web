@@ -141,70 +141,77 @@ async function downloadImage() {
 
 <template>
   <ToolLayout title="Base64 编解码">
-    <div class="space-y-6">
-      <div class="flex gap-2">
+    <div class="space-y-5">
+      <div class="inline-flex gap-1 p-1 bg-slate-100 rounded-xl">
         <button
           :class="[
-            'px-4 py-2 rounded-xl font-medium flex items-center gap-2 cursor-pointer transition-colors',
-            mode === 'text' ? 'btn-primary' : 'btn-secondary',
+            'px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer transition-all text-sm',
+            mode === 'text' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700',
           ]"
           @click="mode = 'text'"
         >
           <DocumentTextIcon class="w-4 h-4" />
-          文本
+          文本模式
         </button>
         <button
           :class="[
-            'px-4 py-2 rounded-xl font-medium flex items-center gap-2 cursor-pointer transition-colors',
-            mode === 'image' ? 'btn-primary' : 'btn-secondary',
+            'px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer transition-all text-sm',
+            mode === 'image' ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700',
           ]"
           @click="mode = 'image'"
         >
           <PhotoIcon class="w-4 h-4" />
-          图片
+          图片模式
         </button>
       </div>
 
-      <div v-if="mode === 'text'" class="space-y-4">
-        <div class="glass-card p-4">
-          <div class="flex gap-2 mb-2">
-            <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="encodeText">
+      <div v-if="mode === 'text'" class="glass-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+            <DocumentTextIcon class="w-5 h-5 text-accent" />
+            文本编解码
+          </h3>
+          <div class="flex gap-2">
+            <button class="btn-primary flex items-center gap-2 cursor-pointer !py-2" @click="encodeText">
               <ArrowPathIcon class="w-4 h-4" />
               编码
             </button>
-            <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="decodeText">
+            <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2" @click="decodeText">
               解码
             </button>
           </div>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <label class="text-slate-500 text-sm block mb-1">输入</label>
-              <textarea
-                v-model="textInput"
-                placeholder="输入要编码或解码的文本..."
-                class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none"
-              />
-            </div>
-            <div>
-              <label class="text-slate-500 text-sm block mb-1">输出</label>
-              <textarea
-                v-model="textOutput"
-                readonly
-                placeholder="结果..."
-                class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none bg-slate-100"
-              />
-            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <label class="text-slate-500 text-xs block mb-1.5">输入</label>
+            <textarea
+              v-model="textInput"
+              placeholder="输入要编码或解码的文本..."
+              class="glass-input w-full min-h-[180px] p-3 font-mono text-sm resize-none"
+            />
+          </div>
+          <div>
+            <label class="text-slate-500 text-xs block mb-1.5">输出</label>
+            <textarea
+              v-model="textOutput"
+              readonly
+              placeholder="结果..."
+              class="glass-input w-full min-h-[180px] p-3 font-mono text-sm resize-none bg-slate-50"
+            />
           </div>
         </div>
       </div>
 
-      <div v-else class="space-y-4">
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">编码（上传图片）</h3>
+      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <PhotoIcon class="w-5 h-5 text-accent" />
+            图片 → Base64
+          </h3>
           <div
             :class="[
               'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
-              isDragging ? 'border-accent bg-accent/10' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-100',
+              isDragging ? 'border-accent bg-accent/10' : 'border-slate-200 hover:border-accent/40 hover:bg-slate-50',
             ]"
             @drop="onDrop"
             @dragover="onDragOver"
@@ -212,44 +219,51 @@ async function downloadImage() {
             @click="fileInput?.click()"
           >
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFile" />
-            <PhotoIcon class="w-12 h-12 text-slate-500 mx-auto mb-2" />
-            <p class="text-slate-400 text-sm">拖放图片到此处，或点击选择文件</p>
+            <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-accent/10 flex items-center justify-center">
+              <PhotoIcon class="w-8 h-8 text-accent" />
+            </div>
+            <p class="text-slate-600 text-sm font-medium">拖放图片到此处</p>
+            <p class="text-slate-400 text-xs mt-1">或点击选择文件</p>
+          </div>
+          <div v-if="imagePreview" class="mt-4 flex flex-wrap gap-2">
+            <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 text-sm" @click="copyBase64">
+              <ClipboardDocumentIcon class="w-4 h-4" />
+              复制 Base64
+            </button>
+            <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 text-sm" @click="copyDataUrl">
+              复制 Data URL
+            </button>
+            <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 text-sm" @click="downloadImage">
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              下载
+            </button>
           </div>
         </div>
 
-        <div class="glass-card p-4">
-          <h3 class="text-slate-800 font-medium mb-3">解码（Base64 → 图片）</h3>
-          <div class="flex gap-2 mb-2">
-            <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="decodeImage">
-              解码
-            </button>
-            <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="pasteBase64">
-              <DocumentPlusIcon class="w-4 h-4" />
-              粘贴
-            </button>
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <ArrowPathIcon class="w-5 h-5 text-accent" />
+              Base64 → 图片
+            </h3>
+            <div class="flex gap-2">
+              <button class="btn-secondary flex items-center gap-1.5 cursor-pointer !py-1.5 !px-3 text-xs" @click="pasteBase64">
+                <DocumentPlusIcon class="w-3.5 h-3.5" />
+                粘贴
+              </button>
+              <button class="btn-primary flex items-center gap-1.5 cursor-pointer !py-1.5 !px-3 text-xs" @click="decodeImage">
+                解码
+              </button>
+            </div>
           </div>
           <textarea
             v-model="base64Input"
             placeholder="粘贴 Base64 字符串..."
-            class="glass-input w-full min-h-[80px] p-3 font-mono text-sm resize-none mb-4"
+            class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none"
           />
-          <div v-if="imagePreview" class="mt-4">
-            <img :src="imagePreview" alt="Preview" class="max-h-64 rounded-xl border border-slate-200" />
+          <div v-if="imagePreview" class="mt-4 bg-slate-50 rounded-xl p-3 flex items-center justify-center">
+            <img :src="imagePreview" alt="Preview" class="max-h-64 rounded-lg" />
           </div>
-        </div>
-
-        <div class="glass-card p-4 flex flex-wrap gap-2">
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyBase64">
-            <ClipboardDocumentIcon class="w-4 h-4" />
-            复制 Base64
-          </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyDataUrl">
-            复制 Data URL
-          </button>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="downloadImage">
-            <ArrowDownTrayIcon class="w-4 h-4" />
-            下载图片
-          </button>
         </div>
       </div>
     </div>

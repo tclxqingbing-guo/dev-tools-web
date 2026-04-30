@@ -105,76 +105,104 @@ function applyTemplate(t: (typeof templates)[0]) {
 
 <template>
   <ToolLayout title="正则表达式测试">
-    <div class="flex gap-6">
-      <aside class="w-48 flex-shrink-0">
-        <div class="glass-card p-4 sticky top-24">
-          <h3 class="text-slate-500 text-xs font-medium mb-3">常用模板</h3>
+    <div class="flex flex-col lg:flex-row gap-5">
+      <aside class="lg:w-52 flex-shrink-0">
+        <div class="glass-card p-4 lg:sticky lg:top-24">
+          <h3 class="text-slate-700 text-sm font-semibold mb-3 flex items-center gap-2">
+            <HashtagIcon class="w-4 h-4 text-accent" />
+            常用模板
+          </h3>
           <div class="space-y-1">
             <button
               v-for="t in templates"
               :key="t.name"
-              class="w-full text-left px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-2 text-sm cursor-pointer transition-colors"
+              class="w-full text-left px-3 py-2 rounded-lg text-slate-600 hover:bg-accent/10 hover:text-accent flex items-center gap-2 text-sm cursor-pointer transition-colors"
               @click="applyTemplate(t)"
             >
-              <component :is="t.icon" class="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <component :is="t.icon" class="w-4 h-4 flex-shrink-0" />
               {{ t.name }}
             </button>
           </div>
         </div>
       </aside>
 
-      <div class="flex-1 space-y-6">
-        <div class="glass-card p-4">
-          <label class="text-slate-500 text-sm font-medium block mb-2">正则表达式</label>
-          <input
-            v-model="regexPattern"
-            placeholder="/pattern/"
-            class="glass-input w-full px-4 py-2 font-mono"
-          />
-          <div class="flex gap-4 mt-2">
+      <div class="flex-1 space-y-5 min-w-0">
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <span class="w-1 h-4 bg-accent rounded-full" />
+            正则表达式
+          </h3>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 font-mono text-lg">/</span>
+            <input
+              v-model="regexPattern"
+              placeholder="pattern"
+              class="glass-input flex-1 px-3 py-2 font-mono"
+              :class="!regexValid && regexPattern ? '!border-red-300' : ''"
+            />
+            <span class="text-slate-400 font-mono text-lg">/{{ flagsStr }}</span>
+          </div>
+          <div class="flex gap-2 mt-3">
             <label
               v-for="f in ['g', 'i', 'm', 's']"
               :key="f"
-              class="flex items-center gap-2 cursor-pointer text-slate-400 text-sm"
+              class="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border text-sm font-mono transition-colors"
+              :class="regexFlags[f as keyof typeof regexFlags]
+                ? 'bg-accent/10 border-accent/40 text-accent'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'"
             >
-              <input v-model="regexFlags[f as keyof typeof regexFlags]" type="checkbox" class="rounded cursor-pointer" />
+              <input v-model="regexFlags[f as keyof typeof regexFlags]" type="checkbox" class="hidden" />
               {{ f }}
             </label>
           </div>
-          <p v-if="!regexValid && regexPattern" class="mt-2 text-red-400 text-sm">正则表达式无效</p>
+          <p
+            v-if="!regexValid && regexPattern"
+            class="mt-2 text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+          >正则表达式无效</p>
         </div>
 
-        <div class="glass-card p-4">
-          <label class="text-slate-500 text-sm font-medium block mb-2">测试文本</label>
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+            <span class="w-1 h-4 bg-accent rounded-full" />
+            测试文本
+          </h3>
           <textarea
             v-model="testText"
             placeholder="输入用于匹配的文本..."
-            class="glass-input w-full min-h-[120px] p-4 font-mono text-sm resize-none"
+            class="glass-input w-full min-h-[140px] p-4 font-mono text-sm resize-y"
           />
         </div>
 
-        <div class="glass-card p-4 bg-surface-card">
-          <h3 class="text-slate-800 font-medium mb-2">匹配结果</h3>
-          <div v-if="matchResults.length > 0" class="space-y-2 mb-4">
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              匹配结果
+            </h3>
+            <span v-if="matchResults.length" class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+              {{ matchResults.length }} 处匹配
+            </span>
+          </div>
+          <div v-if="matchResults.length > 0" class="space-y-1.5 mb-5 max-h-60 overflow-auto">
             <div
               v-for="(r, i) in matchResults"
               :key="i"
-              class="text-sm text-slate-600 flex flex-wrap items-center gap-2"
+              class="text-sm flex flex-wrap items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5"
             >
-              <span class="text-slate-500">#{{ i + 1 }}</span>
-              <span class="text-emerald-400 font-mono">{{ r.match }}</span>
-              <span class="text-slate-500">位置: {{ r.index }}</span>
-              <span v-if="r.groups.length" class="text-amber-400 text-xs">
-                捕获: {{ r.groups.join(', ') }}
+              <span class="text-xs text-slate-400 w-6">#{{ i + 1 }}</span>
+              <code class="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 font-mono text-xs">{{ r.match }}</code>
+              <span class="text-xs text-slate-400">位置 {{ r.index }}</span>
+              <span v-if="r.groups.length" class="text-amber-600 text-xs">
+                捕获: {{ r.groups.join(' · ') }}
               </span>
             </div>
           </div>
-          <div v-else-if="regexPattern && testText && regexValid" class="text-slate-500 text-sm mb-4">
+          <div v-else-if="regexPattern && testText && regexValid" class="text-slate-400 text-sm mb-5 text-center py-4 bg-slate-50 rounded-lg">
             未匹配到结果
           </div>
-          <h3 class="text-slate-800 font-medium mb-2">高亮输出</h3>
+          <h3 class="text-slate-700 text-sm font-semibold mb-2">高亮输出</h3>
           <div
-            class="min-h-[80px] p-4 rounded-xl bg-black/30 font-mono text-sm whitespace-pre-wrap overflow-auto text-slate-600"
+            class="min-h-[80px] p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm whitespace-pre-wrap overflow-auto text-slate-700"
             v-html="highlightText() || (testText ? '无匹配' : '')"
           />
         </div>

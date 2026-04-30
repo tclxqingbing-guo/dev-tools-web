@@ -176,88 +176,100 @@ onUnmounted(() => {
 
 <template>
   <ToolLayout title="AI 图表生成">
-    <div class="space-y-6">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">配置</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">模型</label>
-            <select
-              v-model="model"
-              class="glass-input w-full px-4 py-2 cursor-pointer"
-            >
-              <option v-for="m in chatModels" :key="m.value" :value="m.value">{{ m.label }}</option>
-            </select>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div class="lg:col-span-2 space-y-5">
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+            <SparklesIcon class="w-5 h-5 text-accent" />
+            生成配置
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">AI 模型</label>
+              <select v-model="model" class="glass-input w-full px-3 py-2 cursor-pointer text-sm">
+                <option v-for="m in chatModels" :key="m.value" :value="m.value">{{ m.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">图表类型</label>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button
+                  v-for="t in CHART_TYPES" :key="t.value"
+                  type="button"
+                  :class="['py-1.5 px-2 rounded-lg text-xs cursor-pointer transition-all border', chartType === t.value ? 'bg-accent/10 border-accent/30 text-accent font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300']"
+                  @click="chartType = t.value"
+                >{{ t.label }}</button>
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="text-slate-500 text-sm font-medium block mb-2">图表类型</label>
-            <select
-              v-model="chartType"
-              class="glass-input w-full px-4 py-2 cursor-pointer"
+        </div>
+
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <span class="w-1 h-4 bg-accent rounded-full" />
+              数据 / 需求描述
+            </h3>
+            <span class="text-xs text-slate-400">{{ inputText.length }}</span>
+          </div>
+          <textarea
+            v-model="inputText"
+            placeholder="输入数据或描述图表需求，例如：&#10;月度销售额：1月120万，2月150万，3月180万&#10;或：生成展示各部门占比的饼图"
+            class="glass-input w-full min-h-[200px] p-3 resize-y text-sm"
+          />
+          <div class="flex flex-wrap gap-2 mt-4">
+            <button
+              class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex-1 justify-center"
+              :disabled="loading"
+              @click="generate"
             >
-              <option
-                v-for="t in CHART_TYPES"
-                :key="t.value"
-                :value="t.value"
-              >
-                {{ t.label }}
-              </option>
-            </select>
+              <ArrowPathIcon v-if="loading" class="w-4 h-4 animate-spin" />
+              <SparklesIcon v-else class="w-4 h-4" />
+              {{ loading ? '生成中...' : '生成图表' }}
+            </button>
+            <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="clearChart">
+              <TrashIcon class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="glass-card p-5">
-        <label class="text-slate-500 text-sm font-medium block mb-2">数据 / 需求描述</label>
-        <textarea
-          v-model="inputText"
-          placeholder="输入数据或描述图表需求，例如：&#10;月度销售额：1月120万，2月150万，3月180万&#10;或：生成展示各部门占比的饼图"
-          class="glass-input w-full min-h-[140px] p-4 text-slate-800 placeholder:text-slate-500 resize-y"
-        />
-      </div>
-
-      <div class="flex flex-wrap gap-3">
-        <button
-          class="btn-primary flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="loading"
-          @click="generate"
-        >
-          <ArrowPathIcon
-            v-if="loading"
-            class="w-4 h-4 animate-spin"
-          />
-          <SparklesIcon v-else class="w-4 h-4" />
-          {{ loading ? '生成中...' : '生成图表' }}
-        </button>
-        <button
-          class="btn-secondary flex items-center gap-2 cursor-pointer"
-          @click="clearChart"
-        >
-          <TrashIcon class="w-4 h-4" />
-          清空
-        </button>
-        <button
-          v-if="chartOption"
-          class="btn-secondary flex items-center gap-2 cursor-pointer"
-          @click="downloadPng"
-        >
-          <ArrowDownTrayIcon class="w-4 h-4" />
-          下载 PNG
-        </button>
-      </div>
-
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4 flex items-center gap-2">
-          <ChartBarIcon class="w-5 h-5 text-accent" />
-          图表预览
-        </h3>
-        <div
-          ref="chartContainerRef"
-          class="w-full h-[420px] rounded-xl bg-black/20"
-        />
-        <p v-if="!chartOption && !loading" class="mt-4 text-slate-500 text-sm">
-          生成后的图表将在此显示
-        </p>
+      <div class="lg:col-span-3">
+        <div class="glass-card p-5 h-full flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+              <ChartBarIcon class="w-5 h-5 text-accent" />
+              图表预览
+            </h3>
+            <button
+              v-if="chartOption"
+              class="btn-secondary flex items-center gap-2 cursor-pointer text-sm"
+              @click="downloadPng"
+            >
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              下载 PNG
+            </button>
+          </div>
+          <div class="relative flex-1 min-h-[480px] rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+            <div ref="chartContainerRef" class="w-full h-full min-h-[480px]" />
+            <div
+              v-if="!chartOption && !loading"
+              class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center"
+            >
+              <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+                <ChartBarIcon class="w-8 h-8 text-slate-300" />
+              </div>
+              <p class="text-slate-500 text-sm">生成后的图表将在此显示</p>
+            </div>
+            <div
+              v-if="loading"
+              class="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm"
+            >
+              <div class="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full mb-2" />
+              <p class="text-slate-500 text-sm">AI 正在生成...</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </ToolLayout>

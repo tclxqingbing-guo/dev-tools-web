@@ -231,112 +231,115 @@ onUnmounted(() => {
 
 <template>
   <ToolLayout title="图片压缩">
-    <div class="space-y-6">
+    <div class="space-y-5">
       <div
+        v-if="!sourceFile"
         class="glass-card p-5 border-2 border-dashed transition-colors cursor-pointer"
-        :class="isDragging ? 'border-accent/50 bg-accent/5' : 'border-slate-200 hover:border-slate-300'"
+        :class="isDragging ? 'border-accent bg-accent/5' : 'border-slate-200 hover:border-accent/40'"
         @dragover.prevent="isDragging = true"
         @dragleave="isDragging = false"
         @drop="onDrop"
         @click="fileInput?.click()"
       >
-        <input
-          ref="fileInput"
-          type="file"
-          accept="image/*"
-          class="hidden"
-          @change="onFileInput"
-        />
-        <div class="flex flex-col items-center justify-center py-12 text-slate-500">
-          <PhotoIcon class="w-16 h-16 mb-4" />
-          <p class="text-slate-400 mb-1">拖拽图片到此处，或点击选择，或粘贴 (Ctrl+V)</p>
-        </div>
-      </div>
-
-      <div v-if="sourceFile" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="glass-card p-5">
-          <h3 class="text-slate-800 font-medium mb-3">原图</h3>
-          <img :src="sourcePreview" class="max-h-64 rounded-lg object-contain bg-slate-100" />
-          <p class="text-slate-500 text-sm mt-2">{{ formatBytes(sourceFile.size) }}</p>
-        </div>
-        <div class="glass-card p-5">
-          <h3 class="text-slate-800 font-medium mb-3">压缩结果</h3>
-          <div v-if="isProcessing" class="flex items-center justify-center h-48 text-slate-500">处理中...</div>
-          <template v-else>
-            <img v-if="resultPreview" :src="resultPreview" class="max-h-64 rounded-lg object-contain bg-slate-100" />
-            <p v-if="resultSize" class="text-slate-500 text-sm mt-2">
-              {{ resultSize }}
-              <span v-if="compressionRatio" class="text-accent">压缩 {{ compressionRatio }}</span>
-            </p>
-          </template>
-        </div>
-      </div>
-
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-medium mb-4">设置</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-slate-500 text-sm mb-2">输出格式</label>
-            <select
-              v-model="outputFormat"
-              class="glass-input px-4 py-3 w-full cursor-pointer"
-            >
-              <option value="auto">自动</option>
-              <option value="png">PNG</option>
-              <option value="jpg">JPG</option>
-              <option value="webp">WebP</option>
-            </select>
+        <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileInput" />
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-3">
+            <PhotoIcon class="w-8 h-8 text-accent" />
           </div>
-          <div class="flex items-center pt-8">
-            <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
-              <input v-model="lossless" type="checkbox" class="rounded cursor-pointer" />
-              无损
+          <p class="text-slate-700 font-medium">拖放图片到此处</p>
+          <p class="text-slate-400 text-xs mt-1">点击选择 · 或按 <kbd class="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono">Ctrl + V</kbd> 粘贴</p>
+        </div>
+      </div>
+
+      <template v-else>
+        <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileInput" />
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+                <span class="w-1 h-4 bg-slate-400 rounded-full" />
+                原图
+              </h3>
+              <span class="text-xs text-slate-500 font-mono">{{ formatBytes(sourceFile.size) }}</span>
+            </div>
+            <div class="bg-[repeating-conic-gradient(#e2e8f0_0%_25%,#f8fafc_0%_50%)] bg-[length:12px_12px] rounded-xl p-3">
+              <img :src="sourcePreview" class="max-h-64 mx-auto rounded-lg object-contain" />
+            </div>
+          </div>
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+                <span class="w-1 h-4 bg-accent rounded-full" />
+                压缩结果
+              </h3>
+              <div v-if="resultSize" class="flex items-center gap-2 text-xs">
+                <span class="font-mono text-slate-500">{{ resultSize }}</span>
+                <span v-if="compressionRatio" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium">
+                  -{{ compressionRatio }}
+                </span>
+              </div>
+            </div>
+            <div v-if="isProcessing" class="flex items-center justify-center h-56 text-slate-500 bg-slate-50 rounded-xl">
+              <div class="flex flex-col items-center gap-2">
+                <div class="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full" />
+                <span class="text-sm">处理中...</span>
+              </div>
+            </div>
+            <div v-else class="bg-[repeating-conic-gradient(#e2e8f0_0%_25%,#f8fafc_0%_50%)] bg-[length:12px_12px] rounded-xl p-3">
+              <img v-if="resultPreview" :src="resultPreview" class="max-h-64 mx-auto rounded-lg object-contain" />
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card p-5">
+          <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+            <PhotoIcon class="w-5 h-5 text-accent" />
+            压缩参数
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">输出格式</label>
+              <select v-model="outputFormat" class="glass-input px-3 py-2 w-full cursor-pointer text-sm">
+                <option value="auto">自动</option>
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">最大宽度</label>
+              <input v-model.number="maxWidth" type="number" min="0" class="glass-input px-3 py-2 w-full text-sm" />
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">最大高度</label>
+              <input v-model.number="maxHeight" type="number" min="0" class="glass-input px-3 py-2 w-full text-sm" />
+            </div>
+            <div>
+              <label class="text-slate-500 text-xs block mb-1.5">目标 KB (0=不限)</label>
+              <input v-model.number="targetSizeKB" type="number" min="0" class="glass-input px-3 py-2 w-full text-sm" />
+            </div>
+            <label class="flex items-center gap-2 text-slate-700 cursor-pointer bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-200 text-sm">
+              <input v-model="lossless" type="checkbox" class="rounded cursor-pointer accent-accent" />
+              无损压缩
             </label>
           </div>
-          <div>
-            <label class="block text-slate-500 text-sm mb-2">最大宽度</label>
-            <input
-              v-model.number="maxWidth"
-              type="number"
-              min="0"
-              class="glass-input px-4 py-3 w-full"
-            />
-          </div>
-          <div>
-            <label class="block text-slate-500 text-sm mb-2">最大高度</label>
-            <input
-              v-model.number="maxHeight"
-              type="number"
-              min="0"
-              class="glass-input px-4 py-3 w-full"
-            />
-          </div>
-          <div>
-            <label class="block text-slate-500 text-sm mb-2">目标大小 (KB，0=不限制)</label>
-            <input
-              v-model.number="targetSizeKB"
-              type="number"
-              min="0"
-              class="glass-input px-4 py-3 w-full"
-            />
-          </div>
         </div>
-      </div>
 
-      <div v-if="resultBlob" class="glass-card p-5 flex flex-wrap gap-3">
-        <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="download">
-          <ArrowDownTrayIcon class="w-4 h-4" />
-          下载
-        </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyBase64">
-          <ClipboardDocumentIcon class="w-4 h-4" />
-          复制 Base64
-        </button>
-        <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="clearAll">
-          <TrashIcon class="w-4 h-4" />
-          清空
-        </button>
-      </div>
+        <div v-if="resultBlob" class="glass-card p-4 flex flex-wrap gap-2">
+          <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="download">
+            <ArrowDownTrayIcon class="w-4 h-4" />
+            下载
+          </button>
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyBase64">
+            <ClipboardDocumentIcon class="w-4 h-4" />
+            复制 Base64
+          </button>
+          <button class="btn-secondary flex items-center gap-2 cursor-pointer ml-auto" @click="clearAll">
+            <TrashIcon class="w-4 h-4" />
+            重新选择
+          </button>
+        </div>
+      </template>
     </div>
   </ToolLayout>
 </template>
