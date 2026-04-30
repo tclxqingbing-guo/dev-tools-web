@@ -6,9 +6,10 @@ WORKDIR /app
 
 FROM base AS deps
 COPY pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml ./
 COPY packages/frontend/package.json packages/frontend/
 COPY packages/backend/package.json packages/backend/
-RUN pnpm install
+RUN pnpm install --frozen-lockfile --prod=false
 
 FROM base AS frontend-build
 ARG VITE_SENTRY_DSN
