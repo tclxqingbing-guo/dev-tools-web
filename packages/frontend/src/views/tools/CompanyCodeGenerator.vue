@@ -79,6 +79,10 @@ function copyGenerated() {
   if (generatedCodes.value.length === 0) return
   navigator.clipboard.writeText(generatedCodes.value.join('\n')).then(() => toast.success('已复制'))
 }
+
+function copyCode(code: string) {
+  navigator.clipboard.writeText(code).then(() => toast.success('已复制'))
+}
 </script>
 
 <template>
@@ -149,7 +153,7 @@ function copyGenerated() {
           <div
             v-for="(code, i) in generatedCodes" :key="i"
             class="font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-accent/5 hover:border-accent/30 transition-colors cursor-pointer tracking-wider"
-            @click="() => { navigator.clipboard.writeText(code); toast.success('已复制') }"
+            @click="copyCode(code)"
           >{{ code }}</div>
         </div>
       </div>

@@ -73,23 +73,27 @@ function copyGenerated() {
   if (generatedPassports.value.length === 0) return
   navigator.clipboard.writeText(generatedPassports.value.join('\n')).then(() => toast.success('已复制'))
 }
+
+function copyPassport(passport: string) {
+  navigator.clipboard.writeText(passport).then(() => toast.success('已复制'))
+}
 </script>
 
 <template>
   <ToolLayout title="护照号生成验证">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div class="p-5 glass-card">
+        <h3 class="flex items-center gap-2 mb-4 font-semibold text-slate-800">
           <CheckCircleIcon class="w-5 h-5 text-accent" />
           校验护照号
         </h3>
         <input
           v-model="validateInput"
-          class="glass-input px-4 py-3 w-full font-mono tracking-wider"
+          class="w-full px-4 py-3 font-mono tracking-wider glass-input"
           placeholder="输入护照号校验..."
           maxlength="10"
         />
-        <div v-if="validationResult" class="mt-4 flex items-start gap-3 p-3 rounded-xl border"
+        <div v-if="validationResult" class="flex items-start gap-3 p-3 mt-4 border rounded-xl"
           :class="validationResult.valid
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
             : 'bg-rose-50 border-rose-200 text-rose-700'">
@@ -97,24 +101,24 @@ function copyGenerated() {
           <XCircleIcon v-else class="w-5 h-5 flex-shrink-0 mt-0.5" />
           <span class="text-sm">{{ validationResult.message }}</span>
         </div>
-        <div v-else class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs space-y-1">
-          <div class="flex items-center gap-2"><span class="w-1 h-1 bg-slate-400 rounded-full" />E + 8 位数字（旧版）</div>
-          <div class="flex items-center gap-2"><span class="w-1 h-1 bg-slate-400 rounded-full" />E + 字母 + 7 位数字（电子护照）</div>
-          <div class="flex items-center gap-2"><span class="w-1 h-1 bg-slate-400 rounded-full" />G + 8 位数字</div>
+        <div v-else class="p-3 mt-4 space-y-1 text-xs border rounded-xl bg-slate-50 border-slate-200 text-slate-500">
+          <div class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-slate-400" />E + 8 位数字（旧版）</div>
+          <div class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-slate-400" />E + 字母 + 7 位数字（电子护照）</div>
+          <div class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-slate-400" />G + 8 位数字</div>
         </div>
       </div>
 
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+      <div class="p-5 glass-card">
+        <h3 class="flex items-center gap-2 mb-4 font-semibold text-slate-800">
           <GlobeAltIcon class="w-5 h-5 text-accent" />
           生成护照号
         </h3>
         <div class="flex items-end gap-3">
           <div class="flex-1">
             <label class="text-slate-500 text-xs block mb-1.5">生成数量</label>
-            <input v-model.number="genCount" type="number" min="1" max="50" class="glass-input px-3 py-2 w-full" />
+            <input v-model.number="genCount" type="number" min="1" max="50" class="w-full px-3 py-2 glass-input" />
           </div>
-          <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="generate">
+          <button class="flex items-center gap-2 cursor-pointer btn-primary" @click="generate">
             <GlobeAltIcon class="w-4 h-4" />
             生成
           </button>
@@ -129,23 +133,23 @@ function copyGenerated() {
         </div>
       </div>
 
-      <div v-if="generatedPassports.length > 0" class="glass-card p-5 lg:col-span-2">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-800 font-semibold flex items-center gap-2">
-            <span class="w-1 h-4 bg-accent rounded-full" />
+      <div v-if="generatedPassports.length > 0" class="p-5 glass-card lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="flex items-center gap-2 font-semibold text-slate-800">
+            <span class="w-1 h-4 rounded-full bg-accent" />
             生成结果
             <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">{{ generatedPassports.length }}</span>
           </h3>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
+          <button class="flex items-center gap-2 cursor-pointer btn-secondary" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制全部
           </button>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           <div
             v-for="(id, i) in generatedPassports" :key="i"
-            class="font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-accent/5 hover:border-accent/30 transition-colors cursor-pointer text-center tracking-wider"
-            @click="() => { navigator.clipboard.writeText(id); toast.success('已复制') }"
+            class="px-3 py-2 font-mono text-sm tracking-wider text-center transition-colors border rounded-lg cursor-pointer bg-slate-50 border-slate-200 text-slate-700 hover:bg-accent/5 hover:border-accent/30"
+            @click="copyPassport(id)"
           >{{ id }}</div>
         </div>
       </div>
