@@ -165,9 +165,9 @@ async function downloadImage() {
         </button>
       </div>
 
-      <div v-if="mode === 'text'" class="glass-card p-5">
+      <div v-if="mode === 'text'" class="p-5 glass-card">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+          <h3 class="flex items-center gap-2 font-semibold text-slate-800">
             <DocumentTextIcon class="w-5 h-5 text-accent" />
             文本编解码
           </h3>
@@ -181,7 +181,7 @@ async function downloadImage() {
             </button>
           </div>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
             <label class="text-slate-500 text-xs block mb-1.5">输入</label>
             <textarea
@@ -202,9 +202,9 @@ async function downloadImage() {
         </div>
       </div>
 
-      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div class="glass-card p-5">
-          <h3 class="text-slate-800 font-semibold mb-3 flex items-center gap-2">
+      <div v-else class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div class="p-5 glass-card">
+          <h3 class="flex items-center gap-2 mb-3 font-semibold text-slate-800">
             <PhotoIcon class="w-5 h-5 text-accent" />
             图片 → Base64
           </h3>
@@ -213,19 +213,20 @@ async function downloadImage() {
               'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
               isDragging ? 'border-accent bg-accent/10' : 'border-slate-200 hover:border-accent/40 hover:bg-slate-50',
             ]"
+            class="min-h-[420px]"
             @drop="onDrop"
             @dragover="onDragOver"
             @dragleave="onDragLeave"
             @click="fileInput?.click()"
           >
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFile" />
-            <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <div class="flex items-center justify-center mx-auto mt-10 mb-3 w-14 h-14 rounded-2xl bg-accent/10">
               <PhotoIcon class="w-8 h-8 text-accent" />
             </div>
-            <p class="text-slate-600 text-sm font-medium">拖放图片到此处</p>
-            <p class="text-slate-400 text-xs mt-1">或点击选择文件</p>
+            <p class="text-sm font-medium text-slate-600">拖放图片到此处</p>
+            <p class="mt-1 text-xs text-slate-400">或点击选择文件</p>
           </div>
-          <div v-if="imagePreview" class="mt-4 flex flex-wrap gap-2">
+          <div v-if="imagePreview" class="flex flex-wrap gap-2 mt-4">
             <button class="btn-secondary flex items-center gap-2 cursor-pointer !py-2 text-sm" @click="copyBase64">
               <ClipboardDocumentIcon class="w-4 h-4" />
               复制 Base64
@@ -240,9 +241,9 @@ async function downloadImage() {
           </div>
         </div>
 
-        <div class="glass-card p-5">
+        <div class="p-5 glass-card">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-slate-800 font-semibold flex items-center gap-2">
+            <h3 class="flex items-center gap-2 font-semibold text-slate-800">
               <ArrowPathIcon class="w-5 h-5 text-accent" />
               Base64 → 图片
             </h3>
@@ -259,10 +260,10 @@ async function downloadImage() {
           <textarea
             v-model="base64Input"
             placeholder="粘贴 Base64 字符串..."
-            class="glass-input w-full min-h-[120px] p-3 font-mono text-sm resize-none"
+            class="glass-input w-full min-h-[420px] p-3 font-mono text-sm resize-none"
           />
-          <div v-if="imagePreview" class="mt-4 bg-slate-50 rounded-xl p-3 flex items-center justify-center">
-            <img :src="imagePreview" alt="Preview" class="max-h-64 rounded-lg" />
+          <div v-if="imagePreview" class="flex items-center justify-center p-3 mt-4 bg-slate-50 rounded-xl">
+            <img :src="imagePreview" alt="Preview" class="rounded-lg max-h-64" />
           </div>
         </div>
       </div>
