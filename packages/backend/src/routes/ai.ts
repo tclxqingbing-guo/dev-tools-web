@@ -54,7 +54,7 @@ aiRouter.post('/chat', async (req, res) => {
     return
   }
 
-  const { messages, model, stream, max_tokens } = req.body
+  const { messages, model, stream, max_tokens, ...extraOptions } = req.body ?? {}
 
   try {
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
@@ -64,8 +64,9 @@ aiRouter.post('/chat', async (req, res) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
+        ...extraOptions,
         model: model || 'gpt-4o-mini',
-        messages,
+        messages: messages || [],
         stream: stream ?? false,
         max_tokens: max_tokens || 4096,
       }),

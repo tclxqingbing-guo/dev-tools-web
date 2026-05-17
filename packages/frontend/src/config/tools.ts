@@ -93,6 +93,16 @@ export const tools: Tool[] = [
     usageScore: 7,
   },
   {
+    name: '证件与文本解析',
+    icon: 'IdentificationIcon',
+    description: '图片证件、手写表格与文本内容的结构化智能提取',
+    route: '/tool/document-text-parser',
+    component: 'DocumentTextParser',
+    keywords: ['证件', '解析', '文本', '身份证', '护照', 'excel', 'ocr', '识别'],
+    category: 'AI 工具',
+    usageScore: 8,
+  },
+  {
     name: '身份证生成器',
     icon: 'IdentificationIcon',
     description: '根据省市县、性别、年龄随机生成合法身份证号',
