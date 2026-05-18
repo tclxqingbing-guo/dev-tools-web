@@ -539,7 +539,7 @@ async function analyzeDocument() {
       model: modelConfig.value,
       stream: false,
       max_tokens: 4096,
-      temperature: 0,
+      temperature: modelConfig.value === 'kimi-k2.6' ? 0.6 : 0,
       messages: [
         {
           role: 'user',
