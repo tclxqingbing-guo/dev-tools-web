@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { compressImage } from 'bx-utils'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import { useApi } from '../../composables/useApi'
@@ -194,6 +195,7 @@ const activeTab = ref<ParseTab>('document')
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const showFullscreen = ref(false)
+const documentSourceFile = ref<File | null>(null)
 const imageDataUrl = ref('')
 const selectedDocumentModel = ref(DEFAULT_DOCUMENT_MODEL_CONFIG.value)
 const documentPrompt = ref(DEFAULT_DOCUMENT_PROMPT)
@@ -506,6 +508,7 @@ function processImageFile(file: File) {
     return
   }
 
+  documentSourceFile.value = file
   const reader = new FileReader()
   reader.onload = () => {
     imageDataUrl.value = reader.result as string
@@ -515,6 +518,35 @@ function processImageFile(file: File) {
     toast.success('图片已加载')
   }
   reader.readAsDataURL(file)
+}
+
+/**
+ * 将文件转换成模型可直接消费的 data URL。
+ *
+ * @param file 需要编码的图片文件。
+ * @return data URL 文本。
+ */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      resolve(String(reader.result || ''))
+    }
+    reader.onerror = () => {
+      reject(new Error('图片读取失败'))
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * 根据当前模型选择合适的上传压缩阈值，避免视觉请求体过大。
+ *
+ * @param modelValue 当前证件解析模型。
+ * @return 压缩目标大小，单位 MB。
+ */
+function getDocumentImageMaxSizeMb(modelValue: string): number {
+  return modelValue === 'kimi-k2.6' ? 2 : 4
 }
 
 /**
@@ -528,6 +560,12 @@ async function analyzeDocument() {
   }
 
   const modelConfig = selectedDocumentModelConfig.value
+  const sourceFile = documentSourceFile.value
+  if (!sourceFile) {
+    toast.warning('请重新上传图片后再试')
+    return
+  }
+
   documentLoading.value = true
   documentResults.value = []
   documentRawOutput.value = ''
@@ -535,6 +573,9 @@ async function analyzeDocument() {
   const startedAt = Date.now()
 
   try {
+    const compressedFile = await compressImage(sourceFile, getDocumentImageMaxSizeMb(modelConfig.value))
+    const payloadImageUrl = await readFileAsDataUrl(compressedFile)
+
     const requestBody: Record<string, unknown> = {
       model: modelConfig.value,
       stream: false,
@@ -544,7 +585,7 @@ async function analyzeDocument() {
         {
           role: 'user',
           content: [
-            { type: 'image_url', image_url: { url: imageDataUrl.value } },
+            { type: 'image_url', image_url: { url: payloadImageUrl } },
             { type: 'text', text: documentPrompt.value.trim() || DEFAULT_DOCUMENT_PROMPT },
           ],
         },
@@ -681,6 +722,7 @@ async function copyCurrentRawOutput() {
  */
 function clearCurrentTab() {
   if (activeTab.value === 'document') {
+    documentSourceFile.value = null
     imageDataUrl.value = ''
     showFullscreen.value = false
     documentResults.value = []
@@ -904,7 +946,7 @@ onUnmounted(() => {
                   </p>
                 </div>
                 <div class="p-4 text-sm leading-6 border rounded-2xl bg-slate-50 border-slate-200 text-slate-500">
-                  建议图片尽量清晰、字段完整，证件号与日期不要被遮挡，能明显提升结构化命中率。
+                  建议图片尽量清晰、字段完整，证件号与日期不要被遮挡。发送前会按模型自动压缩，Kimi 会使用更严格的体积限制。
                 </div>
                 <div class="flex flex-wrap gap-2 pt-1 lg:mt-auto">
                   <button type="button" class="flex items-center gap-2 btn-secondary" @click="openFilePicker">
