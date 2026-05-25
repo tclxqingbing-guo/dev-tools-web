@@ -1,59 +1,156 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { validateCreditCode as validateCreditCodeByLib } from 'bx-utils'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { BuildingOfficeIcon, ClipboardDocumentIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '../../composables/useToast'
+import { cities } from '../../data/areaData'
 
 const toast = useToast()
 
 const CHAR_MAP = '0123456789ABCDEFGHJKLMNPQRTUWXY'
 const WEIGHTS = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
+const ORGANIZATION_CODE_WEIGHTS = [3, 7, 9, 10, 5, 8, 4, 2]
+const REGISTRATION_AUTHORITY_CODES = '159Y'
+const ENTITY_TYPE_CODES = '1239'
+
+/**
+ * 提取可用于生成信用代码的 6 位行政区划码。
+ *
+ * @return 可选的行政区划码列表。
+ */
+function collectAreaCodes(): string[] {
+  const codes = new Set<string>()
+
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    if (!value || typeof value !== 'object') {
+      return
+    }
+
+    const record = value as Record<string, unknown>
+    if (typeof record.cityId === 'string' && /^\d{6}$/.test(record.cityId)) {
+      codes.add(record.cityId)
+    }
+
+    Object.values(record).forEach(visit)
+  }
+
+  visit(cities)
+
+  return [...codes]
+}
+
+const AREA_CODES = collectAreaCodes()
+
+/**
+ * 计算统一社会信用代码的校验位。
+ *
+ * @param code 前 17 位代码。
+ * @return 对应的校验字符。
+ */
+function getCreditCodeCheckChar(code: string): string {
+  let sum = 0
+
+  for (let i = 0; i < 17; i++) {
+    const idx = CHAR_MAP.indexOf(code[i] ?? '')
+    sum += idx * (WEIGHTS[i] ?? 0)
+  }
+
+  const remainder = sum % 31
+  const checkValue = remainder === 0 ? 0 : 31 - remainder
+  return CHAR_MAP[checkValue] ?? ''
+}
+
+/**
+ * 生成有效的 9 位组织机构代码段。
+ *
+ * @return 9 位组织机构代码段。
+ */
+function generateOrganizationCodeSegment(): string {
+  let body = ''
+  for (let i = 0; i < 8; i++) {
+    body += CHAR_MAP[Math.floor(Math.random() * CHAR_MAP.length)]
+  }
+
+  let sum = 0
+  for (let i = 0; i < body.length; i++) {
+    const idx = CHAR_MAP.indexOf(body[i] ?? '')
+    sum += idx * (ORGANIZATION_CODE_WEIGHTS[i] ?? 0)
+  }
+
+  const remainder = 11 - (sum % 11)
+  const checkChar = remainder === 10 ? 'X' : remainder === 11 ? '0' : remainder === 12 ? '1' : String(remainder)
+
+  return `${body}${checkChar}`
+}
+
+/**
+ * 校验第 9-17 位组织机构代码段。
+ *
+ * @param segment 第 9-17 位代码段。
+ * @return 是否有效。
+ */
+function validateOrganizationCodeSegment(segment: string): boolean {
+  if (!/^[0-9A-Z]{9}$/.test(segment)) {
+    return false
+  }
+
+  let sum = 0
+  for (let i = 0; i < 8; i++) {
+    const idx = CHAR_MAP.indexOf(segment[i] ?? '')
+    if (idx === -1) {
+      return false
+    }
+    sum += idx * (ORGANIZATION_CODE_WEIGHTS[i] ?? 0)
+  }
+
+  const remainder = 11 - (sum % 11)
+  const expectedCheckChar = remainder === 10 ? 'X' : remainder === 11 ? '0' : remainder === 12 ? '1' : String(remainder)
+  return segment[8] === expectedCheckChar
+}
 
 function validateCreditCode(code: string): { valid: boolean; message: string } {
   const cleaned = code.replace(/\s/g, '').toUpperCase()
   if (cleaned.length !== 18) {
     return { valid: false, message: '长度必须为18位' }
   }
-  for (let i = 0; i < 18; i++) {
-    if (!CHAR_MAP.includes(cleaned[i] ?? '')) {
-      return { valid: false, message: `第${i + 1}位字符无效，允许字符: ${CHAR_MAP}` }
-    }
+
+  if (!REGISTRATION_AUTHORITY_CODES.includes(cleaned[0] ?? '')) {
+    return { valid: false, message: '第1位登记管理部门代码无效，应为 1、5、9、Y 之一' }
   }
-  let sum = 0
-  for (let i = 0; i < 17; i++) {
-    const idx = CHAR_MAP.indexOf(cleaned[i] ?? '')
-    sum += idx * (WEIGHTS[i] ?? 0)
+
+  if (!ENTITY_TYPE_CODES.includes(cleaned[1] ?? '')) {
+    return { valid: false, message: '第2位机构类别代码无效，应为 1、2、3、9 之一' }
   }
-  const remainder = sum % 31
-  const checkValue = remainder === 0 ? 0 : 31 - remainder
-  const expectedCheck = CHAR_MAP[checkValue]
-  const actualCheck = cleaned[17] ?? ''
-  if (actualCheck !== expectedCheck) {
-    return { valid: false, message: `校验位错误：应为 ${expectedCheck}，实际为 ${actualCheck}` }
+
+  if (!/^\d{6}$/.test(cleaned.slice(2, 8))) {
+    return { valid: false, message: '第3到8位行政区划码必须为 6 位数字' }
   }
+
+  if (!validateOrganizationCodeSegment(cleaned.slice(8, 17))) {
+    return { valid: false, message: '第9到17位组织机构代码段无效' }
+  }
+
+  if (!validateCreditCodeByLib(cleaned)) {
+    const expectedCheck = getCreditCodeCheckChar(cleaned.slice(0, 17))
+    return { valid: false, message: `校验位错误：应为 ${expectedCheck}，实际为 ${cleaned[17] ?? ''}` }
+  }
+
   return { valid: true, message: '校验通过' }
 }
 
 function generateOne(): string {
-  const deptCodes = '1239'
-  const orgCodes = '123456789ABCDEFGHJKLMNPQRTUWXY'
   let code = ''
-  code += deptCodes[Math.floor(Math.random() * deptCodes.length)]
-  code += orgCodes[Math.floor(Math.random() * orgCodes.length)]
-  for (let i = 0; i < 6; i++) {
-    code += CHAR_MAP[Math.floor(Math.random() * CHAR_MAP.length)]
-  }
-  for (let i = 0; i < 9; i++) {
-    code += CHAR_MAP[Math.floor(Math.random() * CHAR_MAP.length)]
-  }
-  let sum = 0
-  for (let i = 0; i < 17; i++) {
-    const idx = CHAR_MAP.indexOf(code[i] ?? '')
-    sum += idx * (WEIGHTS[i] ?? 0)
-  }
-  const remainder = sum % 31
-  const checkValue = remainder === 0 ? 0 : 31 - remainder
-  code += CHAR_MAP[checkValue] ?? ''
+  code += REGISTRATION_AUTHORITY_CODES[Math.floor(Math.random() * REGISTRATION_AUTHORITY_CODES.length)] ?? '9'
+  code += ENTITY_TYPE_CODES[Math.floor(Math.random() * ENTITY_TYPE_CODES.length)] ?? '1'
+  code += AREA_CODES[Math.floor(Math.random() * AREA_CODES.length)] ?? '110000'
+  code += generateOrganizationCodeSegment()
+  code += getCreditCodeCheckChar(code)
   return code
 }
 
@@ -87,19 +184,19 @@ function copyCode(code: string) {
 
 <template>
   <ToolLayout title="企业信用代码">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div class="p-5 glass-card">
+        <h3 class="flex items-center gap-2 mb-4 font-semibold text-slate-800">
           <CheckCircleIcon class="w-5 h-5 text-accent" />
           校验信用代码
         </h3>
         <input
           v-model="validateInput"
-          class="glass-input px-4 py-3 w-full font-mono tracking-wider"
+          class="w-full px-4 py-3 font-mono tracking-wider glass-input"
           placeholder="输入18位统一社会信用代码..."
           maxlength="18"
         />
-        <div v-if="validationResult" class="mt-4 flex items-start gap-3 p-3 rounded-xl border"
+        <div v-if="validationResult" class="flex items-start gap-3 p-3 mt-4 border rounded-xl"
           :class="validationResult.valid
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
             : 'bg-rose-50 border-rose-200 text-rose-700'">
@@ -107,22 +204,22 @@ function copyCode(code: string) {
           <XCircleIcon v-else class="w-5 h-5 flex-shrink-0 mt-0.5" />
           <span class="text-sm">{{ validationResult.message }}</span>
         </div>
-        <div v-else class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 text-xs">
+        <div v-else class="p-3 mt-4 text-xs border rounded-xl bg-slate-50 border-slate-200 text-slate-400">
           代码格式：18 位数字 + 大写英文字母（不含 I、O、S、V、Z）
         </div>
       </div>
 
-      <div class="glass-card p-5">
-        <h3 class="text-slate-800 font-semibold mb-4 flex items-center gap-2">
+      <div class="p-5 glass-card">
+        <h3 class="flex items-center gap-2 mb-4 font-semibold text-slate-800">
           <BuildingOfficeIcon class="w-5 h-5 text-accent" />
           生成信用代码
         </h3>
         <div class="flex items-end gap-3">
           <div class="flex-1">
             <label class="text-slate-500 text-xs block mb-1.5">生成数量</label>
-            <input v-model.number="genCount" type="number" min="1" max="50" class="glass-input px-3 py-2 w-full" />
+            <input v-model.number="genCount" type="number" min="1" max="50" class="w-full px-3 py-2 glass-input" />
           </div>
-          <button class="btn-primary flex items-center gap-2 cursor-pointer" @click="generate">
+          <button class="flex items-center gap-2 cursor-pointer btn-primary" @click="generate">
             <BuildingOfficeIcon class="w-4 h-4" />
             生成
           </button>
@@ -137,22 +234,22 @@ function copyCode(code: string) {
         </div>
       </div>
 
-      <div v-if="generatedCodes.length > 0" class="glass-card p-5 lg:col-span-2">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-slate-800 font-semibold flex items-center gap-2">
-            <span class="w-1 h-4 bg-accent rounded-full" />
+      <div v-if="generatedCodes.length > 0" class="p-5 glass-card lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="flex items-center gap-2 font-semibold text-slate-800">
+            <span class="w-1 h-4 rounded-full bg-accent" />
             生成结果
             <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">{{ generatedCodes.length }}</span>
           </h3>
-          <button class="btn-secondary flex items-center gap-2 cursor-pointer" @click="copyGenerated">
+          <button class="flex items-center gap-2 cursor-pointer btn-secondary" @click="copyGenerated">
             <ClipboardDocumentIcon class="w-4 h-4" />
             复制全部
           </button>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
           <div
             v-for="(code, i) in generatedCodes" :key="i"
-            class="font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 hover:bg-accent/5 hover:border-accent/30 transition-colors cursor-pointer tracking-wider"
+            class="px-3 py-2 font-mono text-sm tracking-wider transition-colors border rounded-lg cursor-pointer bg-slate-50 border-slate-200 text-slate-700 hover:bg-accent/5 hover:border-accent/30"
             @click="copyCode(code)"
           >{{ code }}</div>
         </div>
