@@ -9,6 +9,7 @@ import { cities } from '../../data/areaData'
 const toast = useToast()
 
 const CHAR_MAP = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+const ORGANIZATION_CODE_CHAR_VALUES = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const WEIGHTS = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
 const ORGANIZATION_CODE_WEIGHTS = [3, 7, 9, 10, 5, 8, 4, 2]
 const REGISTRATION_AUTHORITY_CODES = '159Y'
@@ -79,7 +80,7 @@ function generateOrganizationCodeSegment(): string {
 
   let sum = 0
   for (let i = 0; i < body.length; i++) {
-    const idx = CHAR_MAP.indexOf(body[i] ?? '')
+    const idx = ORGANIZATION_CODE_CHAR_VALUES.indexOf(body[i] ?? '')
     sum += idx * (ORGANIZATION_CODE_WEIGHTS[i] ?? 0)
   }
 
@@ -89,59 +90,10 @@ function generateOrganizationCodeSegment(): string {
   return `${body}${checkChar}`
 }
 
-/**
- * 校验第 9-17 位组织机构代码段。
- *
- * @param segment 第 9-17 位代码段。
- * @return 是否有效。
- */
-function validateOrganizationCodeSegment(segment: string): boolean {
-  if (!/^[0-9A-Z]{9}$/.test(segment)) {
-    return false
-  }
-
-  let sum = 0
-  for (let i = 0; i < 8; i++) {
-    const idx = CHAR_MAP.indexOf(segment[i] ?? '')
-    if (idx === -1) {
-      return false
-    }
-    sum += idx * (ORGANIZATION_CODE_WEIGHTS[i] ?? 0)
-  }
-
-  const remainder = 11 - (sum % 11)
-  const expectedCheckChar = remainder === 10 ? 'X' : remainder === 11 ? '0' : remainder === 12 ? '1' : String(remainder)
-  return segment[8] === expectedCheckChar
-}
-
 function validateCreditCode(code: string): { valid: boolean; message: string } {
   const cleaned = code.replace(/\s/g, '').toUpperCase()
-  if (cleaned.length !== 18) {
-    return { valid: false, message: '长度必须为18位' }
-  }
-
-  if (!REGISTRATION_AUTHORITY_CODES.includes(cleaned[0] ?? '')) {
-    return { valid: false, message: '第1位登记管理部门代码无效，应为 1、5、9、Y 之一' }
-  }
-
-  if (!ENTITY_TYPE_CODES.includes(cleaned[1] ?? '')) {
-    return { valid: false, message: '第2位机构类别代码无效，应为 1、2、3、9 之一' }
-  }
-
-  if (!/^\d{6}$/.test(cleaned.slice(2, 8))) {
-    return { valid: false, message: '第3到8位行政区划码必须为 6 位数字' }
-  }
-
-  if (!validateOrganizationCodeSegment(cleaned.slice(8, 17))) {
-    return { valid: false, message: '第9到17位组织机构代码段无效' }
-  }
-
-  if (!validateCreditCodeByLib(cleaned)) {
-    const expectedCheck = getCreditCodeCheckChar(cleaned.slice(0, 17))
-    return { valid: false, message: `校验位错误：应为 ${expectedCheck}，实际为 ${cleaned[17] ?? ''}` }
-  }
-
-  return { valid: true, message: '校验通过' }
+  const valid = validateCreditCodeByLib(cleaned)
+  return { valid, message: valid ? '校验通过' : '校验不通过' }
 }
 
 function generateOne(): string {
