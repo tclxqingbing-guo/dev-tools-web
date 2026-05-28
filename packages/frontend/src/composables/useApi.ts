@@ -37,11 +37,10 @@ export const useApi = () => {
     const reader = res.body?.getReader()
     if (!reader) throw new Error('No readable stream')
     const decoder = new TextDecoder()
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      const text = decoder.decode(value, { stream: true })
-      const lines = text.split('\n').filter(l => l.startsWith('data: '))
+    let buffer = ''
+
+    const parseStreamFrame = (frame: string) => {
+      const lines = frame.split('\n').filter(line => line.startsWith('data: '))
       for (const line of lines) {
         const data = line.slice(6)
         if (data === '[DONE]') continue
@@ -53,6 +52,21 @@ export const useApi = () => {
           // Skip malformed or incomplete SSE lines; do not append raw JSON to result
         }
       }
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const frames = buffer.split('\n\n')
+      buffer = frames.pop() ?? ''
+      for (const frame of frames) {
+        parseStreamFrame(frame)
+      }
+    }
+    buffer += decoder.decode()
+    if (buffer.trim()) {
+      parseStreamFrame(buffer)
     }
     onDone?.()
   }

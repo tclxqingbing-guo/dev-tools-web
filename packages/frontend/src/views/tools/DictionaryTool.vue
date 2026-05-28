@@ -5,6 +5,7 @@ import ToolHorizontalTable from '../../components/ToolHorizontalTable.vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import ToolModal from '../../components/ToolModal.vue'
 import ToolPagination from '../../components/ToolPagination.vue'
+import { useAiModels } from '../../composables/useAiModels'
 import { useApi } from '../../composables/useApi'
 import { useToast } from '../../composables/useToast'
 import {
@@ -17,8 +18,11 @@ import {
   DocumentTextIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
+  PhotoIcon,
   PlusIcon,
+  SparklesIcon,
   TableCellsIcon,
+  TagIcon,
   TrashIcon,
   XMarkIcon,
   ChevronLeftIcon,
@@ -27,6 +31,7 @@ import {
 type DictionaryValueType = 'object' | 'array' | 'invalid'
 type EditValueMode = 'form' | 'json'
 type ActionColumnPosition = 'left' | 'right'
+type DictionaryTagColor = 'red' | 'green' | 'blue' | 'amber' | 'violet' | 'slate'
 type JsonPrimitive = string | number | boolean | null
 type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
 
@@ -51,6 +56,17 @@ interface DictionaryMetadata {
   itemPageSize?: number
   actionColumnPosition?: ActionColumnPosition
   columnWidths?: Record<string, number>
+  tagColor?: DictionaryTagColor
+  tagIds?: number[]
+  tags?: DictionaryTag[]
+}
+
+interface DictionaryTag {
+  id: number
+  name: string
+  color: DictionaryTagColor
+  created_at?: string
+  updated_at?: string
 }
 
 interface ArrayTableRow {
@@ -70,12 +86,19 @@ interface EditableArrayField {
   originalKey: string
 }
 
+interface AiOrganizeValue {
+  type: 'object' | 'array'
+  value: JsonObject | JsonObject[]
+}
+
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
-const { request } = useApi()
+const { request, streamRequest } = useApi()
+const { chatModels: remoteAiModels } = useAiModels()
 
 const dictionaries = ref<DictionaryRecord[]>([])
+const dictionaryTags = ref<DictionaryTag[]>([])
 const selectedDictionary = ref<DictionaryRecord | null>(null)
 const keyword = ref('')
 const itemSearchKeyword = ref('')
@@ -93,6 +116,9 @@ const columnSettingsModalOpen = ref(false)
 const rowModalOpen = ref(false)
 const fieldModalOpen = ref(false)
 const rowDetailModalOpen = ref(false)
+const aiOrganizeModalOpen = ref(false)
+const tagManagerModalOpen = ref(false)
+const activeTagDictionaryId = ref<number | null>(null)
 const dictionaryValueMode = ref<EditValueMode>('form')
 const rowValueMode = ref<EditValueMode>('form')
 const editingDictionary = ref<DictionaryRecord | null>(null)
@@ -103,14 +129,45 @@ const dictionaryFormError = ref('')
 const markdownImportError = ref('')
 const rowFormError = ref('')
 const fieldFormError = ref('')
+const aiOrganizeError = ref('')
+const tagFormError = ref('')
 const rowForm = ref('')
+const selectedAiModel = ref('deepseek-v4-pro')
+const aiSourceText = ref('')
+const aiImageDataUrl = ref('')
+const aiOrganizeResult = ref('')
+const aiOrganizing = ref(false)
+const selectedDictionaryTagIds = ref<number[]>([])
 const objectFormFields = ref<EditableField[]>([])
 const arrayFormFields = ref<EditableArrayField[]>([])
-const arrayRowDraft = ref<Record<string, string>>({})
 const arrayRowFormFields = ref<EditableField[]>([])
 const objectJsonTemplate = '{\n  \n}'
 const arrayJsonTemplate = '[\n  {\n    "label": "",\n    "value": ""\n  }\n]'
 const arrayPageSizeOptions = [10, 20, 50, 100]
+const visionAiModel = 'doubao-seed-1.6-vision'
+const dictionaryTagColorOptions: Array<{ value: DictionaryTagColor, label: string, dotClassName: string, iconClassName: string, activeClassName: string }> = [
+  { value: 'red', label: '红色', dotClassName: 'bg-red-500', iconClassName: 'text-red-500', activeClassName: 'bg-red-50 text-red-600 border-red-200' },
+  { value: 'green', label: '绿色', dotClassName: 'bg-emerald-500', iconClassName: 'text-emerald-500', activeClassName: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  { value: 'blue', label: '蓝色', dotClassName: 'bg-blue-500', iconClassName: 'text-blue-500', activeClassName: 'bg-blue-50 text-blue-600 border-blue-200' },
+  { value: 'amber', label: '黄色', dotClassName: 'bg-amber-400', iconClassName: 'text-amber-500', activeClassName: 'bg-amber-50 text-amber-600 border-amber-200' },
+  { value: 'violet', label: '紫色', dotClassName: 'bg-violet-500', iconClassName: 'text-violet-500', activeClassName: 'bg-violet-50 text-violet-600 border-violet-200' },
+  { value: 'slate', label: '灰色', dotClassName: 'bg-slate-400', iconClassName: 'text-slate-400', activeClassName: 'bg-slate-100 text-slate-600 border-slate-300' },
+]
+const dictionaryAiModelIds = [
+  'qwen3.7-max',
+  visionAiModel,
+  'doubao-seed-2.0-pro',
+  'doubao-seed-2.0-lite',
+  'minimax-m2.7',
+  'deepseek-v4-flash',
+  'deepseek-v4-pro',
+  'glm-5.1',
+  'kimi-k2.6',
+  'qwen-flash',
+  'qwen3-vl-flash',
+  'qwen3-vl-plus',
+  'deepseek-v3.2',
+]
 let editableFieldId = 0
 
 const dictionaryForm = reactive({
@@ -127,6 +184,12 @@ const markdownImportForm = reactive({
   content: '',
 })
 
+const tagForm = reactive<{ id: number | null, name: string, color: DictionaryTagColor }>({
+  id: null,
+  name: '',
+  color: 'red',
+})
+
 const fieldForm = reactive({
   key: '',
   value: '',
@@ -140,13 +203,17 @@ const routeDictionaryId = computed(() => {
 
 const filteredDictionaries = computed(() => {
   const normalizedKeyword = keyword.value.trim().toLowerCase()
-  if (!normalizedKeyword) return dictionaries.value
-  return dictionaries.value.filter(dictionary =>
-    dictionary.name.toLowerCase().includes(normalizedKeyword) ||
-    dictionary.code.toLowerCase().includes(normalizedKeyword) ||
-    dictionary.description.toLowerCase().includes(normalizedKeyword) ||
-    dictionary.value.toLowerCase().includes(normalizedKeyword)
-  )
+  return dictionaries.value.filter(dictionary => {
+    const dictionaryTagIds = getDictionaryTagIds(dictionary)
+    if (selectedDictionaryTagIds.value.length && !dictionaryTagIds.some(tagId => selectedDictionaryTagIds.value.includes(tagId))) {
+      return false
+    }
+    if (!normalizedKeyword) return true
+    return dictionary.name.toLowerCase().includes(normalizedKeyword) ||
+      dictionary.code.toLowerCase().includes(normalizedKeyword) ||
+      dictionary.description.toLowerCase().includes(normalizedKeyword) ||
+      dictionary.value.toLowerCase().includes(normalizedKeyword)
+  })
 })
 
 const parsedDictionaryValue = computed<JsonValue | null>(() => {
@@ -218,6 +285,16 @@ const dictionaryFormValueType = computed<DictionaryValueType>(() => getJsonValue
 
 const viewingArrayRowJson = computed(() => viewingArrayRow.value ? JSON.stringify(viewingArrayRow.value.data, null, 2) : '')
 
+const aiModelOptions = computed(() => {
+  const modelIds = new Set([
+    ...dictionaryAiModelIds,
+    ...remoteAiModels.value.map(model => model.value),
+  ])
+  return Array.from(modelIds)
+    .filter(isDictionaryAiModel)
+    .map(modelId => ({ value: modelId, label: modelId }))
+})
+
 const markdownPreviewRows = computed(() => {
   try {
     return parseMarkdownTable(markdownImportForm.content)
@@ -252,6 +329,17 @@ watch([itemSearchKeyword, itemSearchField, itemPageSize], () => {
   itemCurrentPage.value = 1
 })
 
+watch(aiModelOptions, models => {
+  if (!models.some(model => model.value === selectedAiModel.value)) {
+    selectedAiModel.value = models[0]?.value ?? 'deepseek-v4-pro'
+  }
+}, { immediate: true })
+
+watch(dictionaryTags, tags => {
+  const availableTagIds = tags.map(tag => tag.id)
+  selectedDictionaryTagIds.value = selectedDictionaryTagIds.value.filter(tagId => availableTagIds.includes(tagId))
+})
+
 watch(totalArrayPages, totalPages => {
   if (itemCurrentPage.value > totalPages) {
     itemCurrentPage.value = totalPages
@@ -271,6 +359,19 @@ async function fetchDictionaries() {
     toast.error(error instanceof Error ? error.message : '加载字典失败')
   } finally {
     listLoading.value = false
+  }
+}
+
+/**
+ * 加载全局字典标签库。
+ *
+ * @return 无返回值。
+ */
+async function fetchDictionaryTags() {
+  try {
+    dictionaryTags.value = await request<DictionaryTag[]>('/dictionary/tags')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '加载标签失败')
   }
 }
 
@@ -300,7 +401,7 @@ async function fetchDictionary(dictionaryId: number) {
  * @return 无返回值。
  */
 async function submitDictionary() {
-  const normalizedValue = getDictionarySubmitValue()
+  const normalizedValue = editingDictionary.value ? editingDictionary.value.value : getDictionarySubmitValue()
   if (!normalizedValue) return
 
   saving.value = true
@@ -485,6 +586,15 @@ function openMarkdownImport() {
   markdownImportModalOpen.value = true
 }
 
+function openAiOrganize() {
+  aiSourceText.value = ''
+  aiImageDataUrl.value = ''
+  aiOrganizeResult.value = ''
+  aiOrganizeError.value = ''
+  selectedAiModel.value = aiModelOptions.value.some(model => model.value === 'deepseek-v4-pro') ? 'deepseek-v4-pro' : (aiModelOptions.value[0]?.value ?? 'deepseek-v4-pro')
+  aiOrganizeModalOpen.value = true
+}
+
 function applyObjectTemplate() {
   dictionaryForm.value = objectJsonTemplate
   dictionaryValueMode.value = 'form'
@@ -550,6 +660,10 @@ function openEditArrayRow(row: ArrayTableRow) {
 function openArrayRowDetail(row: ArrayTableRow) {
   viewingArrayRow.value = row
   rowDetailModalOpen.value = true
+}
+
+function toggleDictionaryTagMenu(dictionaryId: number) {
+  activeTagDictionaryId.value = activeTagDictionaryId.value === dictionaryId ? null : dictionaryId
 }
 
 async function deleteArrayRow(sourceIndex: number) {
@@ -647,18 +761,15 @@ function hydrateDictionaryFormEditor(): boolean {
   if (valueType === 'object' && isPlainObject(parsedValue)) {
     objectFormFields.value = Object.entries(parsedValue).map(([fieldName, fieldValue]) => createEditableField(fieldName, formatEditableValue(fieldValue)))
     arrayFormFields.value = []
-    arrayRowDraft.value = {}
     return true
   }
   if (valueType === 'array' && Array.isArray(parsedValue)) {
     objectFormFields.value = []
     arrayFormFields.value = inferArrayFieldNames(parsedValue).map(fieldName => createEditableArrayField(fieldName))
-    resetArrayRowDraft()
     return true
   }
   objectFormFields.value = []
   arrayFormFields.value = []
-  arrayRowDraft.value = {}
   return false
 }
 
@@ -709,39 +820,6 @@ function addArrayFormField() {
 function removeArrayFormField(fieldId: number) {
   arrayFormFields.value = arrayFormFields.value.filter(field => field.id !== fieldId)
   syncArrayFormSchemaToDictionaryValue()
-}
-
-function resetArrayRowDraft() {
-  arrayRowDraft.value = arrayFormFields.value.reduce<Record<string, string>>((draft, field) => {
-    const fieldName = field.key.trim()
-    if (fieldName) draft[fieldName] = ''
-    return draft
-  }, {})
-}
-
-function appendDictionaryArrayRow() {
-  dictionaryFormError.value = ''
-  if (!syncArrayFormSchemaToDictionaryValue()) return
-  const parsedValue = parseJsonValue(dictionaryForm.value)
-  if (!Array.isArray(parsedValue)) {
-    dictionaryFormError.value = '当前字典值不是 JSON 数组'
-    return
-  }
-  const row = arrayFormFields.value.reduce<JsonObject>((result, field) => {
-    const fieldName = field.key.trim()
-    if (fieldName) {
-      result[fieldName] = parseLooseJsonValue(arrayRowDraft.value[fieldName] ?? '')
-    }
-    return result
-  }, {})
-  if (!Object.keys(row).length) {
-    dictionaryFormError.value = '请至少保留一个有效字段'
-    return
-  }
-  parsedValue.push(row)
-  dictionaryForm.value = JSON.stringify(parsedValue, null, 2)
-  resetArrayRowDraft()
-  toast.success('已追加一行，保存后生效')
 }
 
 function switchRowValueMode(nextMode: EditValueMode) {
@@ -848,11 +926,13 @@ async function persistDictionaryMetadata() {
  * @return 字典元数据。
  */
 function buildDictionaryMetadata(): DictionaryMetadata {
+  const currentMetadata = selectedDictionary.value ? parseDictionaryMetadata(selectedDictionary.value) : {}
   const persistedColumnWidths = dynamicFields.value.reduce<Record<string, number>>((widths, fieldName) => {
     widths[fieldName] = columnWidths.value[fieldName] ?? getDefaultColumnWidth(fieldName)
     return widths
   }, {})
   return {
+    ...currentMetadata,
     itemPageSize: itemPageSize.value,
     actionColumnPosition: actionColumnPosition.value,
     columnWidths: persistedColumnWidths,
@@ -913,6 +993,331 @@ function normalizeMetadataColumnWidths(columnWidthMetadata: unknown): Record<str
     }
     return widths
   }, {})
+}
+
+function toggleSelectedDictionaryTag(tagId: number) {
+  selectedDictionaryTagIds.value = selectedDictionaryTagIds.value.includes(tagId)
+    ? selectedDictionaryTagIds.value.filter(item => item !== tagId)
+    : [...selectedDictionaryTagIds.value, tagId]
+}
+
+function clearSelectedDictionaryTags() {
+  selectedDictionaryTagIds.value = []
+}
+
+/**
+ * 给字典卡片勾选或取消一个全局标签。
+ *
+ * @param dictionary 字典记录。
+ * @param tagId 标签 ID。
+ * @return 无返回值。
+ */
+async function updateDictionaryTagAssignment(dictionary: DictionaryRecord, tagId: number) {
+  saving.value = true
+  try {
+    const metadata = parseDictionaryMetadata(dictionary)
+    const tagIds = getDictionaryTagIds(dictionary)
+    if (tagIds.includes(tagId)) {
+      metadata.tagIds = tagIds.filter(id => id !== tagId)
+    } else {
+      metadata.tagIds = [...tagIds, tagId]
+    }
+    delete metadata.tagColor
+    delete metadata.tags
+    const savedDictionary = await request<DictionaryRecord>(`/dictionary/${dictionary.id}/metadata`, {
+      method: 'PATCH',
+      body: JSON.stringify({ metadata }),
+    })
+    replaceDictionary(savedDictionary)
+    if (selectedDictionary.value?.id === savedDictionary.id) {
+      selectedDictionary.value = savedDictionary
+    }
+    activeTagDictionaryId.value = null
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '保存标签失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+function getDictionaryTagIds(dictionary: DictionaryRecord): number[] {
+  const metadata = parseDictionaryMetadata(dictionary)
+  if (Array.isArray(metadata.tagIds)) {
+    return Array.from(new Set(metadata.tagIds.map(Number).filter(tagId => Number.isInteger(tagId))))
+  }
+  const legacyTags = normalizeDictionaryTags(metadata.tags)
+  if (legacyTags.length) {
+    return legacyTags
+      .map(legacyTag => dictionaryTags.value.find(tag => tag.name === legacyTag.name)?.id)
+      .filter((tagId): tagId is number => typeof tagId === 'number')
+  }
+  return []
+}
+
+function getDictionaryAssignedTags(dictionary: DictionaryRecord): DictionaryTag[] {
+  const tagIds = getDictionaryTagIds(dictionary)
+  return dictionaryTags.value.filter(tag => tagIds.includes(tag.id))
+}
+
+function openTagManager() {
+  resetTagForm()
+  tagManagerModalOpen.value = true
+}
+
+function startCreateDictionaryTag() {
+  resetTagForm()
+}
+
+function startEditDictionaryTag(tag: DictionaryTag) {
+  tagForm.id = tag.id
+  tagForm.name = tag.name
+  tagForm.color = tag.color
+  tagFormError.value = ''
+}
+
+async function submitDictionaryTag() {
+  const tagName = tagForm.name.trim()
+  if (!tagName) {
+    tagFormError.value = '标签名称不能为空'
+    return
+  }
+  const isEditingTag = Boolean(tagForm.id)
+  try {
+    const savedTag = await request<DictionaryTag>(tagForm.id ? `/dictionary/tags/${tagForm.id}` : '/dictionary/tags', {
+      method: tagForm.id ? 'PUT' : 'POST',
+      body: JSON.stringify({ name: tagName, color: tagForm.color }),
+    })
+    replaceDictionaryTag(savedTag)
+    resetTagForm()
+    toast.success(isEditingTag ? '标签已保存' : '标签已创建')
+  } catch (error) {
+    tagFormError.value = error instanceof Error ? error.message : '保存标签失败'
+  }
+}
+
+async function deleteDictionaryTag(tag: DictionaryTag) {
+  const confirmed = window.confirm(`确认删除标签「${tag.name}」吗？`)
+  if (!confirmed) return
+  try {
+    await request(`/dictionary/tags/${tag.id}`, { method: 'DELETE' })
+    dictionaryTags.value = dictionaryTags.value.filter(item => item.id !== tag.id)
+    selectedDictionaryTagIds.value = selectedDictionaryTagIds.value.filter(tagId => tagId !== tag.id)
+    await fetchDictionaries()
+    if (routeDictionaryId.value) await fetchDictionary(routeDictionaryId.value)
+    resetTagForm()
+    toast.success('标签已删除')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '删除标签失败')
+  }
+}
+
+function replaceDictionaryTag(tag: DictionaryTag) {
+  const tagIndex = dictionaryTags.value.findIndex(item => item.id === tag.id)
+  if (tagIndex >= 0) {
+    dictionaryTags.value.splice(tagIndex, 1, tag)
+  } else {
+    dictionaryTags.value.push(tag)
+  }
+  dictionaryTags.value = [...dictionaryTags.value].sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+}
+
+function resetTagForm() {
+  tagForm.id = null
+  tagForm.name = ''
+  tagForm.color = 'red'
+  tagFormError.value = ''
+}
+
+function normalizeDictionaryTags(value: unknown): DictionaryTag[] {
+  const rawTags = Array.isArray(value) ? value : []
+  const tagMap = new Map<string, DictionaryTag>()
+  for (const tag of rawTags) {
+    const dictionaryTag = normalizeDictionaryTag(tag)
+    if (dictionaryTag) tagMap.set(dictionaryTag.name, dictionaryTag)
+  }
+  return Array.from(tagMap.values())
+}
+
+function normalizeDictionaryTag(value: unknown): DictionaryTag | null {
+  if (typeof value === 'string') {
+    const tagName = value.trim()
+    return tagName ? { id: 0, name: tagName, color: 'slate' } : null
+  }
+  if (!isPlainObject(value)) return null
+  const tagName = typeof value.name === 'string' ? value.name.trim() : ''
+  if (!tagName) return null
+  return {
+    id: Number(value.id) || 0,
+    name: tagName,
+    color: normalizeDictionaryTagColor(value.color),
+  }
+}
+
+function normalizeDictionaryTagColor(value: unknown): DictionaryTagColor {
+  return isDictionaryTagColor(value) ? value : 'slate'
+}
+
+function getDictionaryTagDotClass(color: DictionaryTagColor): string {
+  return dictionaryTagColorOptions.find(item => item.value === color)?.dotClassName ?? 'bg-slate-400'
+}
+
+function getDictionaryTagIconClass(color: DictionaryTagColor | null): string {
+  if (!color) return 'text-slate-300'
+  return dictionaryTagColorOptions.find(item => item.value === color)?.iconClassName ?? 'text-slate-400'
+}
+
+function isDictionaryTagColor(value: unknown): value is DictionaryTagColor {
+  return dictionaryTagColorOptions.some(option => option.value === value)
+}
+
+function getDictionaryTagFilterClass(tag: DictionaryTag, active: boolean): string {
+  if (!active) return 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+  return dictionaryTagColorOptions.find(option => option.value === tag.color)?.activeClassName ?? 'bg-slate-100 text-slate-600 border-slate-300'
+}
+
+function isDictionaryAiModel(modelId: string): boolean {
+  return !/(^gpt-image|image|seedream|seededit|embedding)/i.test(modelId)
+}
+
+function isVisionAiModel(modelId: string): boolean {
+  return /vision|\bvl\b|vl-|qwen3-vl/i.test(modelId)
+}
+
+async function handleAiImageChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  aiImageDataUrl.value = await readFileAsDataUrl(file)
+  if (!isVisionAiModel(selectedAiModel.value)) {
+    selectedAiModel.value = visionAiModel
+  }
+}
+
+function clearAiImage() {
+  aiImageDataUrl.value = ''
+}
+
+async function runAiOrganize() {
+  const sourceText = aiSourceText.value.trim()
+  if (!sourceText && !aiImageDataUrl.value) {
+    aiOrganizeError.value = '请粘贴文字数据或上传截图'
+    return
+  }
+  if (aiImageDataUrl.value && !isVisionAiModel(selectedAiModel.value)) {
+    aiOrganizeError.value = '截图整理请使用视觉模型'
+    selectedAiModel.value = visionAiModel
+    return
+  }
+
+  aiOrganizing.value = true
+  aiOrganizeError.value = ''
+  aiOrganizeResult.value = ''
+  let streamedContent = ''
+  try {
+    await streamRequest(
+      '/ai/chat',
+      {
+        model: selectedAiModel.value,
+        messages: buildAiOrganizeMessages(sourceText),
+        temperature: 0.1,
+        max_tokens: 8192,
+        stream: true,
+      },
+      chunk => {
+        streamedContent += chunk
+        aiOrganizeResult.value = streamedContent
+      }
+    )
+    const organized = parseAiOrganizeResult(streamedContent)
+    if (!organized) {
+      aiOrganizeError.value = 'AI 未返回有效对象或列表 JSON'
+      aiOrganizeResult.value = streamedContent
+      return
+    }
+    aiOrganizeResult.value = JSON.stringify(organized.value, null, 2)
+    toast.success(organized.type === 'array' ? '已整理为列表模板' : '已整理为对象模板')
+  } catch (error) {
+    aiOrganizeError.value = error instanceof Error ? error.message : 'AI 整理失败'
+  } finally {
+    aiOrganizing.value = false
+  }
+}
+
+async function applyAiOrganizeResult() {
+  const organized = parseAiOrganizeResult(aiOrganizeResult.value)
+  if (!organized) {
+    aiOrganizeError.value = '请先生成有效对象或列表 JSON'
+    return
+  }
+  if (selectedDictionary.value) {
+    await saveDictionaryValue(organized.value)
+    aiOrganizeModalOpen.value = false
+    return
+  } else {
+    openCreateDictionary()
+    dictionaryForm.name = dictionaryForm.name || 'AI 整理字典'
+  }
+  dictionaryForm.value = JSON.stringify(organized.value, null, 2)
+  dictionaryValueMode.value = 'form'
+  hydrateDictionaryFormEditor()
+  aiOrganizeModalOpen.value = false
+}
+
+function buildAiOrganizeMessages(sourceText: string) {
+  const userPrompt = `请整理下面的数据，判断更适合 JSON 对象还是 JSON 列表。\n\n要求：\n1. 多条同构记录输出 JSON 数组；单条记录或配置详情输出 JSON 对象。\n2. 字段名使用输入中的业务含义，保持中文字段名、productCode、planCode、OrderType、链接等关键信息。\n3. 不要编造不存在的数据；不确定的值保留原文。\n4. 只返回严格 JSON，不要 Markdown，不要解释。\n\n文字数据：\n${sourceText || '见截图内容'}`
+  const userContent = aiImageDataUrl.value
+    ? [
+        { type: 'text', text: userPrompt },
+        { type: 'image_url', image_url: { url: aiImageDataUrl.value } },
+      ]
+    : userPrompt
+  return [
+    {
+      role: 'system',
+      content: 'You convert messy text, Markdown, JSON, tables, or screenshots into clean JSON. Return only a JSON object or JSON array.',
+    },
+    {
+      role: 'user',
+      content: userContent,
+    },
+  ]
+}
+
+function parseAiOrganizeResult(content: string): AiOrganizeValue | null {
+  const parsed = parseJsonValue(stripAiJsonFence(content)) as unknown
+  if (Array.isArray(parsed)) {
+    return { type: 'array', value: parsed.map(item => isPlainObject(item) ? item : { value: item as JsonValue }) }
+  }
+  if (isPlainObject(parsed)) {
+    const value = parsed.value ?? parsed.data
+    if (Array.isArray(value)) {
+      return { type: 'array', value: value.map(item => isPlainObject(item) ? item : { value: item as JsonValue }) }
+    }
+    if (isPlainObject(value)) {
+      return { type: 'object', value }
+    }
+    return { type: 'object', value: parsed }
+  }
+  return null
+}
+
+function stripAiJsonFence(content: string): string {
+  const trimmedContent = content.trim()
+  const fenceMatch = trimmedContent.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  return (fenceMatch?.[1] ?? trimmedContent).trim()
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(new Error('读取图片失败'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function getColumnStyle(fieldName: string): Record<string, string> {
@@ -976,7 +1381,6 @@ function syncArrayFormSchemaToDictionaryValue(): boolean {
     return nextRow
   })
 
-  syncArrayRowDraftKeys(normalizedFields)
   for (const field of normalizedFields) {
     field.key = field.key.trim()
     field.originalKey = field.key
@@ -1006,22 +1410,6 @@ function normalizeArrayFormFields(): EditableArrayField[] | null {
     normalizedFields.push({ ...field, key: fieldName })
   }
   return normalizedFields
-}
-
-/**
- * 按最新字段列表保留新增行草稿值。
- *
- * @param fields 最新基础表单字段。
- * @return 无返回值。
- */
-function syncArrayRowDraftKeys(fields: EditableArrayField[]) {
-  const nextDraft: Record<string, string> = {}
-  for (const field of fields) {
-    const fieldName = field.key.trim()
-    const previousFieldName = field.originalKey.trim()
-    nextDraft[fieldName] = arrayRowDraft.value[fieldName] ?? arrayRowDraft.value[previousFieldName] ?? ''
-  }
-  arrayRowDraft.value = nextDraft
 }
 
 function createEditableField(key: string, value: string): EditableField {
@@ -1222,7 +1610,10 @@ function formatTime(timeText: string): string {
   }
 }
 
-onMounted(fetchDictionaries)
+onMounted(() => {
+  void fetchDictionaries()
+  void fetchDictionaryTags()
+})
 </script>
 
 <template>
@@ -1247,15 +1638,35 @@ onMounted(fetchDictionaries)
                 type="text"
               />
             </div>
-            <button class="flex items-center justify-center gap-2 text-sm btn-secondary" @click="openMarkdownImport">
-              <ArrowUpTrayIcon class="w-4 h-4" />
-              导入 Markdown
+            <button class="flex items-center justify-center gap-2 text-sm btn-secondary" @click="openAiOrganize">
+              <SparklesIcon class="w-4 h-4" />
+              AI 整理
             </button>
             <button class="flex items-center justify-center gap-2 text-sm btn-primary" @click="openCreateDictionary">
               <PlusIcon class="w-4 h-4" />
               新建字典
             </button>
           </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-100">
+          <span class="text-xs text-slate-500">标签筛选</span>
+          <button
+            v-for="tag in dictionaryTags"
+            :key="tag.id"
+            :class="['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all', getDictionaryTagFilterClass(tag, selectedDictionaryTagIds.includes(tag.id))]"
+            :title="tag.name"
+            @click="toggleSelectedDictionaryTag(tag.id)"
+          >
+            <TagIcon :class="['w-4 h-4', getDictionaryTagIconClass(tag.color)]" />
+            {{ tag.name }}
+          </button>
+          <button v-if="selectedDictionaryTagIds.length" class="px-3 py-1.5 rounded-full text-xs bg-slate-100 text-slate-500 hover:bg-slate-200" @click="clearSelectedDictionaryTags">
+            清空
+          </button>
+          <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-500 hover:border-accent/40 hover:text-accent" @click="openTagManager">
+            <TagIcon class="w-4 h-4" />
+            管理标签
+          </button>
         </div>
       </div>
 
@@ -1268,7 +1679,7 @@ onMounted(fetchDictionaries)
         <div
           v-for="dictionary in filteredDictionaries"
           :key="dictionary.id"
-          class="p-5 transition-all duration-200 cursor-pointer glass-card group hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5"
+          class="relative p-5 transition-all duration-200 cursor-pointer glass-card group hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5"
           @click="openDictionaryDetail(dictionary)"
         >
           <div class="flex items-start justify-between gap-3">
@@ -1277,6 +1688,34 @@ onMounted(fetchDictionaries)
                 <h4 class="font-semibold truncate transition-colors text-slate-800 group-hover:text-accent">
                   {{ dictionary.name }}
                 </h4>
+                <div class="relative shrink-0">
+                  <button class="flex items-center justify-center min-w-6 h-6 px-1 rounded-lg hover:bg-slate-100" @click.stop="toggleDictionaryTagMenu(dictionary.id)">
+                    <template v-if="getDictionaryAssignedTags(dictionary).length">
+                      <TagIcon v-for="tag in getDictionaryAssignedTags(dictionary)" :key="tag.id" :class="['w-4 h-4 -ml-0.5 first:ml-0', getDictionaryTagIconClass(tag.color)]" />
+                    </template>
+                    <TagIcon v-else class="w-4 h-4 text-slate-300" />
+                  </button>
+                  <div v-if="activeTagDictionaryId === dictionary.id" class="absolute left-0 top-7 z-30 w-52 p-2 bg-white border rounded-xl shadow-lg border-slate-200" @click.stop>
+                    <div v-if="dictionaryTags.length" class="space-y-1">
+                      <button
+                        v-for="tag in dictionaryTags"
+                        :key="tag.id"
+                        :class="['w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', getDictionaryTagIds(dictionary).includes(tag.id) ? getDictionaryTagFilterClass(tag, true) : 'text-slate-600 hover:bg-slate-50']"
+                        @click="updateDictionaryTagAssignment(dictionary, tag.id)"
+                      >
+                        <span class="flex items-center min-w-0 gap-2">
+                          <TagIcon :class="['w-4 h-4 shrink-0', getDictionaryTagIconClass(tag.color)]" />
+                          <span class="truncate">{{ tag.name }}</span>
+                        </span>
+                        <CheckIcon v-if="getDictionaryTagIds(dictionary).includes(tag.id)" class="w-3.5 h-3.5 shrink-0" />
+                      </button>
+                    </div>
+                    <div v-else class="px-2 py-2 text-xs text-slate-400">暂无标签</div>
+                    <button class="w-full mt-1 px-2 py-1.5 rounded-lg text-xs text-slate-500 hover:text-accent hover:bg-accent/10" @click="openTagManager">
+                      管理标签
+                    </button>
+                  </div>
+                </div>
                 <span
                   :class="['text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap', getDictionaryTypeClass(dictionary.value_type)]"
                 >
@@ -1314,7 +1753,7 @@ onMounted(fetchDictionaries)
         <div class="flex items-center justify-center mx-auto mb-3 w-14 h-14 rounded-2xl bg-slate-100">
           <BookOpenIcon class="w-7 h-7 text-slate-300" />
         </div>
-        <p class="text-sm font-medium text-slate-600">{{ keyword ? '未找到匹配字典' : '暂无字典' }}</p>
+        <p class="text-sm font-medium text-slate-600">{{ keyword || selectedDictionaryTagIds.length ? '未找到匹配字典' : '暂无字典' }}</p>
         <p class="mt-1 text-xs text-slate-400">新建一个 JSON 对象或数组字典开始使用</p>
       </div>
     </div>
@@ -1374,27 +1813,25 @@ onMounted(fetchDictionaries)
           </button>
         </div>
 
-        <div v-if="objectFields.length" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div v-if="objectFields.length" class="overflow-hidden border rounded-xl border-slate-200 bg-slate-50">
           <div
             v-for="field in objectFields"
             :key="field.fieldName"
-            class="p-4 border rounded-xl border-slate-200 bg-slate-50 group"
+            class="grid grid-cols-1 gap-2 px-4 py-3 border-b md:grid-cols-[220px_1fr_auto] md:items-start border-slate-200 last:border-b-0 group"
           >
-            <div class="flex items-start justify-between gap-3 mb-3">
-              <div class="min-w-0">
-                <div class="font-semibold truncate text-slate-800">{{ field.fieldName }}</div>
-                <div class="text-[10px] text-slate-400 mt-1 uppercase">{{ field.fieldType }}</div>
-              </div>
-              <div class="flex items-center gap-1 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                <button class="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10" @click="openEditObjectField(field.fieldName, field.fieldValue)">
-                  <PencilSquareIcon class="w-4 h-4" />
-                </button>
-                <button class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" @click="deleteObjectField(field.fieldName)">
-                  <TrashIcon class="w-4 h-4" />
-                </button>
-              </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate text-slate-800">{{ field.fieldName }}</div>
+              <div class="text-[10px] text-slate-400 mt-1 uppercase">{{ field.fieldType }}</div>
             </div>
-            <pre class="overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-slate-600 max-h-40">{{ formatJsonValue(field.fieldValue) }}</pre>
+            <pre class="overflow-auto font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-slate-600 max-h-40">{{ formatJsonValue(field.fieldValue) || '-' }}</pre>
+            <div class="flex items-center gap-1 transition-opacity opacity-100 md:justify-end sm:opacity-0 sm:group-hover:opacity-100">
+              <button class="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10" @click="openEditObjectField(field.fieldName, field.fieldValue)">
+                <PencilSquareIcon class="w-4 h-4" />
+              </button>
+              <button class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" @click="deleteObjectField(field.fieldName)">
+                <TrashIcon class="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1560,6 +1997,125 @@ onMounted(fetchDictionaries)
         </template>
     </ToolModal>
 
+    <ToolModal :open="aiOrganizeModalOpen" title="AI 整理" panel-class="w-[92vw] sm:w-[980px]" @close="aiOrganizeModalOpen = false">
+      <template #icon>
+        <SparklesIcon class="w-5 h-5 text-accent" />
+      </template>
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="space-y-3">
+          <div>
+            <label class="text-slate-500 text-xs block mb-1.5">模型</label>
+            <select v-model="selectedAiModel" class="w-full px-3 py-2 text-sm cursor-pointer glass-input">
+              <option v-for="model in aiModelOptions" :key="model.value" :value="model.value">{{ model.label }}</option>
+            </select>
+            <p class="mt-1 text-[10px] text-slate-400">截图会自动切换到 {{ visionAiModel }}。</p>
+          </div>
+          <div>
+            <label class="text-slate-500 text-xs block mb-1.5">原始文字数据</label>
+            <textarea
+              v-model="aiSourceText"
+              class="glass-input w-full min-h-[300px] p-3 text-sm font-mono resize-y"
+              placeholder="粘贴 txt、Markdown、JSON、表格文本，或配合截图一起整理"
+              spellcheck="false"
+            />
+          </div>
+          <div class="p-3 border border-dashed rounded-xl border-slate-200 bg-slate-50">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <PhotoIcon class="w-4 h-4 text-accent" />
+                上传截图
+              </div>
+              <input type="file" accept="image/*" class="text-xs text-slate-500" @change="handleAiImageChange" />
+            </div>
+            <div v-if="aiImageDataUrl" class="mt-3">
+              <img :src="aiImageDataUrl" alt="待整理截图" class="object-contain bg-white border rounded-lg max-h-44 border-slate-200" />
+              <button class="mt-2 text-xs text-slate-500 hover:text-red-500" @click="clearAiImage">移除截图</button>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs text-slate-500">整理结果</label>
+            <span v-if="aiOrganizing" class="inline-flex items-center gap-1.5 text-[10px] text-accent">
+              <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+              {{ aiOrganizeResult ? '正在接收输出' : '正在等待模型响应' }}
+            </span>
+            <span v-else class="text-[10px] text-slate-400">对象或列表 JSON</span>
+          </div>
+          <textarea
+            v-model="aiOrganizeResult"
+            class="glass-input w-full min-h-[500px] p-3 text-sm font-mono resize-y"
+            placeholder="AI 整理后会生成可编辑 JSON"
+            spellcheck="false"
+          />
+          <p v-if="aiOrganizeError" class="text-xs text-red-500">{{ aiOrganizeError }}</p>
+        </div>
+      </div>
+      <template #footer>
+        <button class="flex items-center gap-2 text-sm btn-secondary" @click="aiOrganizeModalOpen = false">
+          <XMarkIcon class="w-4 h-4" />
+          取消
+        </button>
+        <button class="flex items-center gap-2 text-sm btn-secondary disabled:opacity-50" :disabled="aiOrganizing" @click="runAiOrganize">
+          <ArrowPathIcon v-if="aiOrganizing" class="w-4 h-4 animate-spin" />
+          <SparklesIcon v-else class="w-4 h-4" />
+          {{ aiOrganizing ? '整理中...' : '开始整理' }}
+        </button>
+        <button class="flex items-center gap-2 text-sm btn-primary disabled:opacity-50" :disabled="!aiOrganizeResult.trim()" @click="applyAiOrganizeResult">
+          <CheckIcon class="w-4 h-4" />
+          应用到字典模板
+        </button>
+      </template>
+    </ToolModal>
+
+    <ToolModal :open="tagManagerModalOpen" title="管理标签" panel-class="w-[92vw] sm:w-[640px]" @close="tagManagerModalOpen = false">
+      <template #icon>
+        <TagIcon class="w-5 h-5 text-accent" />
+      </template>
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto] sm:items-center">
+          <input v-model="tagForm.name" class="px-3 py-2 text-sm glass-input" placeholder="标签名称，例如：代驾业务" @keydown.enter.prevent="submitDictionaryTag" />
+          <select v-model="tagForm.color" class="px-3 py-2 text-sm cursor-pointer glass-input">
+            <option v-for="option in dictionaryTagColorOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+          <button class="flex items-center justify-center gap-1.5 px-3 py-2 text-sm btn-primary" @click="submitDictionaryTag">
+            <CheckIcon class="w-4 h-4" />
+            {{ tagForm.id ? '保存' : '新增' }}
+          </button>
+        </div>
+        <p v-if="tagFormError" class="text-xs text-red-500">{{ tagFormError }}</p>
+        <div class="space-y-2 max-h-[360px] overflow-auto pr-1">
+          <div v-for="tag in dictionaryTags" :key="tag.id" class="grid grid-cols-[1fr_auto] gap-2 items-center p-3 border rounded-xl border-slate-200 bg-slate-50">
+            <div class="flex items-center min-w-0 gap-2">
+              <TagIcon :class="['w-4 h-4 shrink-0', getDictionaryTagIconClass(tag.color)]" />
+              <span class="text-sm truncate text-slate-700">{{ tag.name }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10" @click="startEditDictionaryTag(tag)">
+                <PencilSquareIcon class="w-4 h-4" />
+              </button>
+              <button class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" @click="deleteDictionaryTag(tag)">
+                <TrashIcon class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div v-if="!dictionaryTags.length" class="p-8 text-sm text-center border border-dashed rounded-xl border-slate-200 text-slate-400">
+            暂无标签
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button class="flex items-center gap-2 text-sm btn-secondary" @click="startCreateDictionaryTag">
+          <PlusIcon class="w-4 h-4" />
+          新标签
+        </button>
+        <button class="flex items-center gap-2 text-sm btn-primary" @click="tagManagerModalOpen = false">
+          <CheckIcon class="w-4 h-4" />
+          完成
+        </button>
+      </template>
+    </ToolModal>
+
     <ToolModal :open="columnSettingsModalOpen" title="列设置" @close="columnSettingsModalOpen = false">
       <template #icon>
         <TableCellsIcon class="w-5 h-5 text-accent" />
@@ -1609,13 +2165,13 @@ onMounted(fetchDictionaries)
     <ToolModal
       :open="dictionaryModalOpen"
       :title="editingDictionary ? '编辑字典' : '新建字典'"
-      panel-class="w-[92vw] sm:w-[1120px] sm:min-w-[760px] min-h-[560px]"
+      :panel-class="editingDictionary ? 'w-[92vw] sm:w-[520px]' : 'w-[92vw] sm:w-[1120px] sm:min-w-[760px] min-h-[560px]'"
       @close="dictionaryModalOpen = false"
     >
       <template #icon>
         <BookOpenIcon class="w-5 h-5 text-accent" />
       </template>
-        <div class="grid grid-cols-1 gap-3 mb-3 md:grid-cols-2">
+        <div :class="editingDictionary ? 'space-y-3 mb-3' : 'grid grid-cols-1 gap-3 mb-3 md:grid-cols-2'">
           <div>
             <label class="text-slate-500 text-xs block mb-1.5">名称</label>
             <input v-model="dictionaryForm.name" class="w-full px-3 py-2 text-sm glass-input" placeholder="例如：状态字典" />
@@ -1629,7 +2185,7 @@ onMounted(fetchDictionaries)
           <label class="text-slate-500 text-xs block mb-1.5">说明</label>
           <input v-model="dictionaryForm.description" class="w-full px-3 py-2 text-sm glass-input" placeholder="字典用途说明" />
         </div>
-        <div>
+        <div v-if="!editingDictionary">
           <div class="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
             <label class="text-xs text-slate-500">字典值</label>
             <div class="flex flex-wrap items-center gap-1">
@@ -1673,7 +2229,7 @@ onMounted(fetchDictionaries)
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span class="text-xs text-slate-500">基础表单字段</span>
-                <p class="text-[10px] text-slate-400 mt-0.5">根据数组对象字段生成，可追加新行；完整批量调整可切回 JSON 编辑。</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">根据数组对象字段生成；新增数据行在列表明细右侧操作。</p>
               </div>
               <button class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1 justify-center" @click="addArrayFormField">
                 <PlusIcon class="w-3.5 h-3.5" />
@@ -1686,21 +2242,6 @@ onMounted(fetchDictionaries)
                 <button class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" @click="removeArrayFormField(field.id)">
                   <TrashIcon class="w-4 h-4" />
                 </button>
-              </div>
-            </div>
-            <div class="p-3 bg-white border rounded-xl border-slate-200">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-500">新增一行</span>
-                <button class="btn-primary px-3 py-1.5 text-xs flex items-center gap-1" @click="appendDictionaryArrayRow">
-                  <PlusIcon class="w-3.5 h-3.5" />
-                  追加到列表
-                </button>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[220px] overflow-auto pr-1">
-                <div v-for="field in arrayFormFields" :key="field.id">
-                  <label class="text-[10px] text-slate-400 block mb-1 truncate">{{ field.key || '未命名字段' }}</label>
-                  <input v-model="arrayRowDraft[field.key]" class="w-full px-3 py-2 text-sm glass-input" placeholder="字段值，支持 JSON 值" />
-                </div>
               </div>
             </div>
           </div>

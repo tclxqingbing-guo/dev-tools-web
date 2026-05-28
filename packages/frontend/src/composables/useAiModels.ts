@@ -1,7 +1,7 @@
 import { ref, onMounted } from 'vue';
 import { useApi } from './useApi';
 
-const DEFAULT_CHAT_MODELS = ['deepseek-v4-flash'];
+const DEFAULT_CHAT_MODELS = ['deepseek-v4-pro'];
 
 export interface AiModelOption {
   value: string;

@@ -12,6 +12,7 @@ const dbPath = resolve(dataDir, 'dictionary.db')
 mkdirSync(dataDir, { recursive: true })
 
 type DictionaryValueType = 'object' | 'array' | 'invalid'
+type DictionaryTagColor = 'red' | 'green' | 'blue' | 'amber' | 'violet' | 'slate'
 
 interface DictionaryRecord {
   id: number
@@ -22,6 +23,14 @@ interface DictionaryRecord {
   metadata: string
   value_type: DictionaryValueType
   item_count: number
+  created_at: string
+  updated_at: string
+}
+
+interface DictionaryTagRecord {
+  id: number
+  name: string
+  color: DictionaryTagColor
   created_at: string
   updated_at: string
 }
@@ -50,6 +59,15 @@ async function getDb(): Promise<import('sql.js').Database> {
       description TEXT NOT NULL DEFAULT '',
       value TEXT NOT NULL DEFAULT '{}',
       metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS dictionary_tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT 'slate',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
@@ -153,6 +171,80 @@ function mapDictionaryRow(row: unknown[]): DictionaryRecord {
 }
 
 /**
+ * 将数据库行转换为标签记录。
+ *
+ * @param row 数据库查询结果行。
+ * @return 标签记录。
+ */
+function mapDictionaryTagRow(row: unknown[]): DictionaryTagRecord {
+  return {
+    id: Number(row[0]),
+    name: String(row[1] ?? ''),
+    color: normalizeTagColor(row[2]),
+    created_at: String(row[3] ?? ''),
+    updated_at: String(row[4] ?? ''),
+  }
+}
+
+/**
+ * 查询全部标签记录并按名称排序。
+ *
+ * @param database 字典数据库实例。
+ * @return 标签记录列表。
+ */
+function getDictionaryTagRows(database: import('sql.js').Database): DictionaryTagRecord[] {
+  const result = database.exec('SELECT id, name, color, created_at, updated_at FROM dictionary_tags ORDER BY name ASC, id ASC')
+  return (result[0]?.values ?? []).map(mapDictionaryTagRow)
+}
+
+/**
+ * 校验标签名称。
+ *
+ * @param value 标签名称。
+ * @return 规范化后的标签名称。
+ */
+function normalizeTagName(value: unknown): string {
+  const name = String(value ?? '').trim()
+  if (!name) throw new Error('Tag name is required')
+  return name
+}
+
+/**
+ * 校验标签颜色。
+ *
+ * @param value 标签颜色。
+ * @return 规范化后的标签颜色。
+ */
+function normalizeTagColor(value: unknown): DictionaryTagColor {
+  const color = String(value ?? 'slate')
+  return ['red', 'green', 'blue', 'amber', 'violet', 'slate'].includes(color) ? color as DictionaryTagColor : 'slate'
+}
+
+/**
+ * 删除标签后清理字典元数据中的引用。
+ *
+ * @param database 字典数据库实例。
+ * @param tagId 被删除的标签 ID。
+ */
+function removeTagFromDictionaryMetadata(database: import('sql.js').Database, tagId: number) {
+  const rows = database.exec('SELECT id, metadata FROM dictionaries')
+  for (const row of rows[0]?.values ?? []) {
+    const dictionaryId = Number(row[0])
+    const metadataText = String(row[1] ?? '{}')
+    try {
+      const metadata = JSON.parse(metadataText) as { tagIds?: unknown }
+      if (!Array.isArray(metadata.tagIds)) continue
+      const nextTagIds = metadata.tagIds.map(Number).filter(id => Number.isInteger(id) && id !== tagId)
+      if (nextTagIds.length === metadata.tagIds.length) continue
+      metadata.tagIds = nextTagIds
+      database.run('UPDATE dictionaries SET metadata = ?, updated_at = datetime(\'now\') WHERE id = ?', [JSON.stringify(metadata, null, 2), dictionaryId])
+    } catch {
+      // Ignore malformed dictionary metadata while cleaning tag references.
+    }
+  }
+}
+
+/**
  * 查询全部字典记录并按更新时间排序。
  *
  * @param database 字典数据库实例。
@@ -198,6 +290,77 @@ dictionaryRouter.get('/search', async (req, res) => {
     const database = await getDb()
     const keyword = String(req.query.keyword ?? req.query.word ?? '').trim()
     res.json(filterDictionaryRows(getDictionaryRows(database), keyword))
+  } catch (error) {
+    res.status(500).json({ message: (error as Error).message })
+  }
+})
+
+dictionaryRouter.get('/tags', async (_req, res) => {
+  try {
+    const database = await getDb()
+    res.json(getDictionaryTagRows(database))
+  } catch (error) {
+    res.status(500).json({ message: (error as Error).message })
+  }
+})
+
+dictionaryRouter.post('/tags', async (req, res) => {
+  try {
+    const database = await getDb()
+    const name = normalizeTagName(req.body.name)
+    const color = normalizeTagColor(req.body.color)
+    database.run('INSERT INTO dictionary_tags (name, color) VALUES (?, ?)', [name, color])
+    const result = database.exec('SELECT last_insert_rowid() as id')
+    const id = result[0]?.values?.[0]?.[0] as number
+    const row = database.exec(`SELECT id, name, color, created_at, updated_at FROM dictionary_tags WHERE id = ${id}`)
+    const values = row[0]?.values?.[0]
+    persist(database)
+    res.status(201).json(values ? mapDictionaryTagRow(values) : { id, name, color })
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message })
+  }
+})
+
+dictionaryRouter.put('/tags/:id', async (req, res) => {
+  try {
+    const database = await getDb()
+    const id = parseInt(req.params.id, 10)
+    if (Number.isNaN(id)) {
+      res.status(400).json({ message: 'Invalid id' })
+      return
+    }
+    const name = normalizeTagName(req.body.name)
+    const color = normalizeTagColor(req.body.color)
+    database.run("UPDATE dictionary_tags SET name = ?, color = ?, updated_at = datetime('now') WHERE id = ?", [name, color, id])
+    if (database.getRowsModified() === 0) {
+      res.status(404).json({ message: 'Tag not found' })
+      return
+    }
+    const row = database.exec(`SELECT id, name, color, created_at, updated_at FROM dictionary_tags WHERE id = ${id}`)
+    const values = row[0]?.values?.[0]
+    persist(database)
+    res.json(values ? mapDictionaryTagRow(values) : {})
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message })
+  }
+})
+
+dictionaryRouter.delete('/tags/:id', async (req, res) => {
+  try {
+    const database = await getDb()
+    const id = parseInt(req.params.id, 10)
+    if (Number.isNaN(id)) {
+      res.status(400).json({ message: 'Invalid id' })
+      return
+    }
+    database.run('DELETE FROM dictionary_tags WHERE id = ?', [id])
+    if (database.getRowsModified() === 0) {
+      res.status(404).json({ message: 'Tag not found' })
+      return
+    }
+    removeTagFromDictionaryMetadata(database, id)
+    persist(database)
+    res.json({ success: true })
   } catch (error) {
     res.status(500).json({ message: (error as Error).message })
   }

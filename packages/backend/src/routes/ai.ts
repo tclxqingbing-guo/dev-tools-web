@@ -18,8 +18,7 @@ const getImageConfig = () => ({
   apiKey: process.env['AI_API_KEY-IMAGE'] || process.env.AI_API_KEY || '',
 })
 
-const CHAT_MODEL_PATTERN = /^(deepseek-v3|qwen|gpt|claude)/i
-const NON_CHAT_SUFFIX = /-(embedding|ocr|seedream|seededit)$/i
+const NON_CHAT_MODEL_PATTERN = /(embedding|ocr|^gpt-image|image|seedream|seededit)/i
 
 aiRouter.get('/models', async (_req, res) => {
   const { baseUrl, apiKey } = getChatConfig()
@@ -38,9 +37,7 @@ aiRouter.get('/models', async (_req, res) => {
     }
     const data = (await response.json()) as { data?: { id: string }[] }
     const all = data.data?.map((m) => m.id) ?? []
-    const chatModels = all.filter(
-      (id) => (CHAT_MODEL_PATTERN.test(id) || !NON_CHAT_SUFFIX.test(id)) && !/-embedding$/i.test(id) && !/-ocr$/i.test(id)
-    )
+    const chatModels = all.filter((id) => !NON_CHAT_MODEL_PATTERN.test(id))
     res.json(chatModels.length ? chatModels : all)
   } catch (err: any) {
     res.status(500).json({ message: err.message })
