@@ -183,6 +183,16 @@ export const tools: Tool[] = [
     usageScore: 5,
   },
   {
+    name: '字典查询',
+    icon: 'BookOpenIcon',
+    description: 'JSON 字典维护、动态查询和明细管理',
+    route: '/tool/dictionary',
+    component: 'DictionaryTool',
+    keywords: ['字典', 'dictionary', 'dict', 'json', '查询', '配置', '枚举'],
+    category: '开发工具',
+    usageScore: 8,
+  },
+  {
     name: '代码对比',
     icon: 'DocumentDuplicateIcon',
     description: '对比两段代码的差异，支持语法高亮',

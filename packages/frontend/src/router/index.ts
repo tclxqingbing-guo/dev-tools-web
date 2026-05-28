@@ -35,6 +35,8 @@ const router = createRouter({
     { path: '/tool/variable-namer', name: 'VariableNamer', component: lazyTool('VariableNamer') },
     { path: '/tool/tailwind-generator', name: 'TailwindGenerator', component: lazyTool('TailwindGenerator') },
     { path: '/tool/chart-generator', name: 'ChartGenerator', component: lazyTool('ChartGenerator') },
+    { path: '/tool/dictionary', name: 'DictionaryTool', component: lazyTool('DictionaryTool') },
+    { path: '/tool/dictionary/:id', name: 'DictionaryDetail', component: lazyTool('DictionaryTool') },
     { path: '/tool/tts-generator', name: 'TtsGenerator', component: lazyTool('TtsGenerator') },
     { path: '/tool/ocr-tool', name: 'OcrTool', component: lazyTool('OcrTool') },
     { path: '/tool/document-text-parser', name: 'DocumentTextParser', component: lazyTool('DocumentTextParser') },
