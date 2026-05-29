@@ -10,6 +10,7 @@ import { useApi } from '../../composables/useApi'
 import { useToast } from '../../composables/useToast'
 import {
   ArrowLeftIcon,
+  ArrowDownTrayIcon,
   ArrowPathIcon,
   ArrowUpTrayIcon,
   BookOpenIcon,
@@ -138,6 +139,7 @@ const aiImageDataUrl = ref('')
 const aiOrganizeResult = ref('')
 const aiOrganizing = ref(false)
 const selectedDictionaryTagIds = ref<number[]>([])
+const dictionaryJsonImportInput = ref<HTMLInputElement | null>(null)
 const objectFormFields = ref<EditableField[]>([])
 const arrayFormFields = ref<EditableArrayField[]>([])
 const arrayRowFormFields = ref<EditableField[]>([])
@@ -479,8 +481,8 @@ async function submitMarkdownImport() {
  * @param nextValue 下一份对象或数组数据。
  * @return 无返回值。
  */
-async function saveDictionaryValue(nextValue: JsonValue) {
-  if (!selectedDictionary.value) return
+async function saveDictionaryValue(nextValue: JsonValue, successMessage = '字典值已保存'): Promise<boolean> {
+  if (!selectedDictionary.value) return false
   saving.value = true
   try {
     const savedDictionary = await request<DictionaryRecord>(`/dictionary/${selectedDictionary.value.id}`, {
@@ -494,12 +496,56 @@ async function saveDictionaryValue(nextValue: JsonValue) {
     })
     selectedDictionary.value = savedDictionary
     replaceDictionary(savedDictionary)
-    toast.success('字典值已保存')
+    toast.success(successMessage)
+    return true
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '保存字典值失败')
+    return false
   } finally {
     saving.value = false
   }
+}
+
+function triggerDictionaryJsonImport() {
+  dictionaryJsonImportInput.value?.click()
+}
+
+async function handleDictionaryJsonImport(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const importedValue = JSON.parse(await file.text()) as JsonValue
+    const importedType = getJsonValueType(importedValue)
+    if (importedType === 'invalid') {
+      toast.warning('请导入 JSON 对象或数组')
+      return
+    }
+    await saveDictionaryValue(importedValue, 'JSON 已导入')
+  } catch {
+    toast.error('请导入有效 JSON 文件')
+  } finally {
+    input.value = ''
+  }
+}
+
+function exportDictionaryJson() {
+  if (!selectedDictionary.value) return
+  const parsedValue = parseJsonValue(selectedDictionary.value.value)
+  if (!parsedValue || getJsonValueType(parsedValue) === 'invalid') {
+    toast.warning('当前字典值不是有效 JSON 对象或数组')
+    return
+  }
+  const fileName = `${getSafeFileName(selectedDictionary.value.name || selectedDictionary.value.code || 'dictionary')}.json`
+  const blob = new Blob([JSON.stringify(parsedValue, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -1577,6 +1623,11 @@ function formatJsonValue(value: JsonValue | undefined): string {
   return JSON.stringify(value)
 }
 
+function getSafeFileName(fileName: string): string {
+  const normalizedFileName = fileName.trim().replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '')
+  return normalizedFileName || 'dictionary'
+}
+
 function getJsonType(value: JsonValue | undefined): string {
   if (value === undefined) return 'empty'
   if (value === null) return 'null'
@@ -1780,6 +1831,15 @@ onMounted(() => {
             </div>
           </div>
           <div v-if="selectedDictionary" class="flex items-center gap-2">
+            <input ref="dictionaryJsonImportInput" class="hidden" type="file" accept="application/json,.json" @change="handleDictionaryJsonImport" />
+            <button class="flex items-center gap-2 text-sm btn-secondary" :disabled="saving" @click="triggerDictionaryJsonImport">
+              <ArrowUpTrayIcon class="w-4 h-4" />
+              导入 JSON
+            </button>
+            <button class="flex items-center gap-2 text-sm btn-secondary" @click="exportDictionaryJson">
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              导出 JSON
+            </button>
             <button class="flex items-center gap-2 text-sm btn-secondary" @click="openEditDictionary(selectedDictionary)">
               <PencilSquareIcon class="w-4 h-4" />
               编辑字典
