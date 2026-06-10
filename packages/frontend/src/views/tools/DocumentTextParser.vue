@@ -100,6 +100,18 @@ const DOCUMENT_MODELS: VisionModelConfig[] = [
     },
   },
   {
+    value: 'qwen3.6-flash',
+    label: 'Qwen3.6-Flash',
+    supportsThinking: true,
+    priceLabel: '输入 ¥1.08 / 1M Token · 输出 ¥6.48 / 1M Token',
+    pricing: {
+      segments: [
+        { promptMax: 256000, promptPrice: 0.00000108, completionPrice: 0.00000648 },
+      ],
+      note: '仅展示 ≤256K 档位',
+    },
+  },
+  {
     value: 'doubao-seed-1.6-vision',
     label: 'Doubao-Seed-1.6-Vision',
     supportsThinking: true,
