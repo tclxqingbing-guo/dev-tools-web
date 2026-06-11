@@ -578,7 +578,7 @@ function tokenizeInput(lines: string[]): string[] {
 
 /**
  * 从多切片返回结果中合并并去重证件记录。
- * 去重依据：姓名 + 证件号完全相同视为同一条记录。
+ * 去重依据：仅按证件号去重（同一证件号视为同一人）。
  */
 function mergeResults(recordsList: ParsedRecord[][]): ParsedRecord[] {
   const seen = new Set<string>()
@@ -586,7 +586,7 @@ function mergeResults(recordsList: ParsedRecord[][]): ParsedRecord[] {
 
   for (const records of recordsList) {
     for (const r of records) {
-      const dedupKey = `${r.name}|${r.card_no}`
+      const dedupKey = r.card_no !== '-' ? r.card_no : `${r.name}|${merged.length}`
       if (!seen.has(dedupKey)) {
         seen.add(dedupKey)
         merged.push(r)
@@ -734,7 +734,8 @@ async function analyzeDocument() {
     }
 
     if (modelConfig.supportsThinking) {
-      requestBody.thinking = { type: 'disabled' }
+      requestBody.thinking = { type: 'disable' }
+      requestBody.reasoning_effort = 'low'
     }
 
     const response = await api.request<ChatCompletionResponse>('/ai/chat', {
@@ -824,6 +825,8 @@ async function analyzeText() {
           stream: false,
           max_tokens: 4096,
           temperature: 0,
+          thinking: { type: 'disable' },
+          reasoning_effort: 'low',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: slices[0] },
@@ -845,6 +848,8 @@ async function analyzeText() {
               stream: false,
               max_tokens: 4096,
               temperature: 0,
+              thinking: { type: 'disable' },
+              reasoning_effort: 'low',
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: slice },
