@@ -80,6 +80,15 @@ const TEXT_MODEL_PRICING: PricingConfig = {
   segments: [{ promptPrice: 0.00000095, completionPrice: 0.0000019 }],
 }
 
+/** 文本解析切片阈值：每行不超过此字符数，否则报错 */
+const SLICE_LINE_MAX_CHARS = 300
+/** 每组最多行数，超过则开启新组 */
+const MAX_LINES_PER_SLICE = 5
+/** 单组最大字符数，超出发起新组 */
+const MAX_CHARS_PER_SLICE = SLICE_LINE_MAX_CHARS
+/** 文本解析并发令牌桶大小 */
+const TEXT_CONCURRENT_LIMIT = 10
+
 const DOCUMENT_MODELS: VisionModelConfig[] = [
   {
     value: 'qwen3-vl-plus',
@@ -222,6 +231,11 @@ const textLoading = ref(false)
 const textResults = ref<ParsedRecord[]>([])
 const textRawOutput = ref('')
 const textStats = ref<UsageStats | null>(null)
+/** 文本解析步骤状态：slicing → processing:0/N → processing:N/N → done */
+const textStep = ref<{ phase: string; label: string }>({
+  phase: 'idle',
+  label: '',
+})
 
 const currentResults = computed(() => (
   activeTab.value === 'document' ? documentResults.value : textResults.value
@@ -469,6 +483,121 @@ function parseRecords(content: string): ParsedRecord[] {
 }
 
 /**
+ * 令牌桶并发控制器，用于限制文本切片解析的并发请求数。
+ * 实现方式：Semaphore 计数器 + Promise 队列，最多同时 N 个 pending 请求。
+ */
+function createConcurrentExecutor(maxConcurrency: number) {
+  let running = 0
+  const queue: Array<() => Promise<void>> = []
+
+  function drain() {
+    while (running < maxConcurrency && queue.length > 0) {
+      const task = queue.shift()!
+      running += 1
+      task().finally(() => {
+        running -= 1
+        drain()
+      })
+    }
+  }
+
+  return function execute<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      queue.push(async () => {
+        try {
+          resolve(await fn())
+        } catch (e) {
+          reject(e)
+        } finally {
+          drain()
+        }
+      })
+      drain()
+    })
+  }
+}
+
+/** 文本解析并发执行器（最大 10 并发） */
+const executeTextSlice = createConcurrentExecutor(TEXT_CONCURRENT_LIMIT)
+
+/**
+ * 校验输入文本格式：检查是否有行超过阈值。
+ * @param text 用户输入的原始文本。
+ * @return 分割后的非空行数组；如果存在超长行则抛出 Error。
+ */
+function validateTextInput(text: string): string[] {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  const tooLongLines = lines.filter(l => l.length > SLICE_LINE_MAX_CHARS)
+  if (tooLongLines.length > 0) {
+    throw new Error(`内容格式错误：发现 ${tooLongLines.length} 行长超过 ${SLICE_LINE_MAX_CHARS} 字符，请确保每人信息在同一行且单行不超过 ${SLICE_LINE_MAX_CHARS} 字`)
+  }
+  return lines
+}
+
+/**
+ * 将验证后的行数组切分为若干组。每组 ≤ MAX_LINES_PER_SLICE 行且总字符数 ≤ MAX_CHARS_PER_SLICE。
+ * 当一行单独就 ≥ MAX_CHARS_PER_SLICE 时，仍会放入切片（但 API 可能因上下文不足报错）。
+ *
+ * @param lines 已验证的非空行数组。
+ * @return 每组的字符串，包含换行分隔的原始行。
+ */
+function tokenizeInput(lines: string[]): string[] {
+  if (lines.length === 0) return []
+
+  const slices: string[] = []
+  let currentGroup: string[] = []
+  let currentChars = 0
+
+  for (const line of lines) {
+    const addedChars = line.length + 1 // include newline
+
+    // Check if adding this line exceeds group size limits
+    const wouldExceedLineCount = currentGroup.length >= MAX_LINES_PER_SLICE
+    const wouldExceedCharLimit = currentChars + addedChars > MAX_CHARS_PER_SLICE
+
+    if (wouldExceedLineCount || wouldExceedCharLimit) {
+      // Finalize current group
+      if (currentGroup.length > 0) {
+        slices.push(currentGroup.join('\n'))
+      }
+      currentGroup = [line]
+      currentChars = line.length
+    } else {
+      currentGroup.push(line)
+      currentChars += addedChars
+    }
+  }
+
+  // Push remaining group
+  if (currentGroup.length > 0) {
+    slices.push(currentGroup.join('\n'))
+  }
+
+  return slices
+}
+
+/**
+ * 从多切片返回结果中合并并去重证件记录。
+ * 去重依据：姓名 + 证件号完全相同视为同一条记录。
+ */
+function mergeResults(recordsList: ParsedRecord[][]): ParsedRecord[] {
+  const seen = new Set<string>()
+  const merged: ParsedRecord[] = []
+
+  for (const records of recordsList) {
+    for (const r of records) {
+      const dedupKey = `${r.name}|${r.card_no}`
+      if (!seen.has(dedupKey)) {
+        seen.add(dedupKey)
+        merged.push(r)
+      }
+    }
+  }
+
+  return merged
+}
+
+/**
  * 从接口响应中提取 assistant 的文本输出。
  *
  * @param response Chat completion 响应。
@@ -639,6 +768,8 @@ async function analyzeDocument() {
 
 /**
  * 调用文本模型解析输入文本中的证件相关信息。
+ * 支持切片并发：将文本按行切分为 ≤300 字符的组，
+ * 每组独立请求大模型，令牌桶控制最大并发数（10）。
  *
  * @return 无返回值。
  */
@@ -651,43 +782,130 @@ async function analyzeText() {
     return
   }
 
+  const rawInput = textInput.value.trim()
+
+  // --- 阶段 1：校验格式 ---
+  let lines: string[]
+  try {
+    lines = validateTextInput(rawInput)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '输入格式校验失败'
+    toast.error(msg)
+    return
+  }
+
+  if (lines.length === 0) {
+    toast.warning('未检测到有效内容行')
+    return
+  }
+
+  // --- 阶段 2：切分 ---
+  const slices = tokenizeInput(lines)
+  const systemPrompt = textPrompt.value.trim() || DEFAULT_TEXT_PROMPT
+
   textLoading.value = true
   textResults.value = []
   textRawOutput.value = ''
   textStats.value = null
+  textStep.value = { phase: 'slice', label: `已切分为 ${slices.length} 组` }
+
   const startedAt = Date.now()
+  const allResponses: ChatCompletionResponse[] = []
 
   try {
-    const response = await api.request<ChatCompletionResponse>('/ai/chat', {
-      method: 'POST',
-      body: JSON.stringify({
-        model: TEXT_MODEL,
-        stream: false,
-        max_tokens: 3072,
-        temperature: 0,
-        messages: [
-          { role: 'system', content: textPrompt.value.trim() || DEFAULT_TEXT_PROMPT },
-          { role: 'user', content: textInput.value.trim() },
-        ],
-      }),
-    })
-
-    const content = getAssistantContent(response)
-    textRawOutput.value = content
-    textResults.value = parseRecords(content)
-    textStats.value = buildStats(response, Date.now() - startedAt, TEXT_MODEL, TEXT_MODEL_PRICING)
-
-    if (textResults.value.length > 0) {
-      toast.success(`文本解析完成，共 ${textResults.value.length} 条记录`)
-      return
+    // --- 阶段 3：并发请求 ---
+    if (slices.length === 1) {
+      // 单组直接请求，不走并发池
+      textStep.value = { phase: 'processing', label: '正在解析...' }
+      const response = await api.request<ChatCompletionResponse>('/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: TEXT_MODEL,
+          stream: false,
+          max_tokens: 4096,
+          temperature: 0,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: slices[0] },
+          ],
+        }),
+      })
+      allResponses.push(response)
+    } else {
+      // 多组并发请求
+      textStep.value = { phase: 'processing', label: `正在解析 0/${slices.length}...` }
+      await Promise.all(slices.map(async (slice, idx) => {
+        // Show progress before starting this request
+        textStep.value = { phase: 'processing', label: `正在解析 ${idx + 1}/${slices.length}...` }
+        const response = await executeTextSlice(() =>
+          api.request<ChatCompletionResponse>('/ai/chat', {
+            method: 'POST',
+            body: JSON.stringify({
+              model: TEXT_MODEL,
+              stream: false,
+              max_tokens: 4096,
+              temperature: 0,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: slice },
+              ],
+            }),
+          })
+        )
+        allResponses[idx] = response
+      }))
     }
 
-    toast.warning('已返回结果，但没有解析出有效 JSON，请检查提示词或原始输出')
+    // --- 阶段 4：合并结果 ---
+    const allRecords: ParsedRecord[] = []
+    let totalPromptTokens = 0
+    let totalCompletionTokens = 0
+    let totalAllTokens = 0
+
+    for (const response of allResponses) {
+      if (!response) continue
+      const content = getAssistantContent(response)
+      const records = parseRecords(content)
+      if (records.length > 0) {
+        allRecords.push(...records)
+      }
+      totalPromptTokens += response.usage?.prompt_tokens || 0
+      totalCompletionTokens += response.usage?.completion_tokens || 0
+      totalAllTokens += response.usage?.total_tokens || 0
+    }
+
+    // Deduplicate
+    textResults.value = mergeResults([allRecords])
+    textRawOutput.value = allResponses.map(r => getAssistantContent(r)).join('\n\n---\n')
+
+    // Calculate total duration as weighted average
+    const elapsedMs = Date.now() - startedAt
+
+    // Build combined stats from aggregate token counts
+    textStats.value = {
+      durationMs: elapsedMs,
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      totalTokens: totalAllTokens,
+      model: TEXT_MODEL,
+      cost: calculateUsageCost(TEXT_MODEL_PRICING, totalPromptTokens, totalCompletionTokens),
+      costNote: '',
+    }
+
+    if (textResults.value.length > 0) {
+      const extra = allRecords.length > textResults.value.length
+        ? `（已合并 ${allRecords.length - textResults.value.length} 条重复记录）`
+        : ''
+      toast.success(`文本解析完成，共 ${textResults.value.length} 条记录${extra}`)
+    } else {
+      toast.warning('已返回结果，但没有解析出有效 JSON，请检查提示词或原始输出')
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '文本解析失败'
     toast.error(message)
   } finally {
     textLoading.value = false
+    textStep.value = { phase: 'idle', label: '' }
   }
 }
 
@@ -748,6 +966,7 @@ function clearCurrentTab() {
     textResults.value = []
     textRawOutput.value = ''
     textStats.value = null
+    textStep.value = { phase: 'idle', label: '' }
   }
   toast.success('已清空当前页签内容')
 }
@@ -874,7 +1093,7 @@ onUnmounted(() => {
               适合真实证件、手写登记、Excel 截图、聊天截图等图片场景。支持一张图内识别多条证件记录。
             </p>
             <p v-else class="text-sm leading-6 text-slate-500">
-              适合 OCR 结果、表格文本、聊天转录和人工整理内容。会用 deepseek-v4-flash 提取多条结构化记录。
+              适合 OCR 结果、表格文本、聊天转录和人工整理内容。按行自动切片（≤300 字/组）并发请求 deepseek-v4-flash 提取多条结构化记录。
             </p>
             <div class="grid grid-cols-1 gap-3 text-xs">
               <div class="p-3 border rounded-xl bg-slate-50 border-slate-200">
@@ -906,7 +1125,7 @@ onUnmounted(() => {
                   {{ TEXT_MODEL_PRICE_LABEL }}
                 </div>
                 <p v-if="activeTab === 'text'" class="mt-2 text-[11px] text-slate-400 leading-5">
-                  输出格式固定为 JSON 数组。
+                  输出格式固定为 JSON 数组。自动切片并发解析，最大并发 10 组。
                 </p>
               </div>
             </div>
@@ -1019,7 +1238,7 @@ onUnmounted(() => {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 class="font-semibold text-slate-800">输入待解析文本</h3>
-                <p class="mt-1 text-sm text-slate-500">可直接粘贴 OCR 结果、Excel 文本、聊天记录或人工整理内容</p>
+                <p class="mt-1 text-sm text-slate-500">可直接粘贴 OCR 结果、Excel 文本、聊天记录或人工整理内容。每行对应一个人，单行不超过 300 字。</p>
               </div>
               <button
                 type="button"
@@ -1027,7 +1246,7 @@ onUnmounted(() => {
                 :disabled="textLoading || !textInput.trim()"
                 @click="analyzeText"
               >
-                <DocumentMagnifyingGlassIcon class="w-4 h-4" />
+                <ArrowPathIcon class="w-4 h-4" />
                 {{ textLoading ? '解析中...' : '开始文本解析' }}
               </button>
             </div>
@@ -1037,6 +1256,12 @@ onUnmounted(() => {
               class="glass-input min-h-[320px] p-3 resize-y text-sm leading-6 w-full"
               spellcheck="false"
             />
+            <Transition name="fade">
+              <div v-if="textStep.phase !== 'idle'" class="flex items-center gap-2 text-xs font-medium text-accent">
+                <span v-if="textStep.phase === 'slice'">{{ textStep.label }}</span>
+                <span v-if="textStep.phase.startsWith('processing')">{{ textStep.label }}</span>
+              </div>
+            </Transition>
           </div>
 
           <div v-if="currentStats" class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
