@@ -252,6 +252,16 @@ export const tools: Tool[] = [
     category: '实用工具',
     usageScore: 8,
   },
+  {
+    name: 'Mock API',
+    icon: 'ServerStackIcon',
+    description: '创建和管理 Mock 接口，支持条件返回与动态数据',
+    route: '/tool/mock-api',
+    component: 'MockApiTool',
+    keywords: ['mock', 'api', '接口', '模拟', '测试', 'fake', 'stub'],
+    category: '测试工具',
+    usageScore: 9,
+  },
 ]
 
 export function getFrequentTools(): Tool[] {

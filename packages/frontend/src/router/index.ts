@@ -41,6 +41,7 @@ const router = createRouter({
     { path: '/tool/ocr-tool', name: 'OcrTool', component: lazyTool('OcrTool') },
     { path: '/tool/document-text-parser', name: 'DocumentTextParser', component: lazyTool('DocumentTextParser') },
     { path: '/tool/note-tool', name: 'NoteTool', component: lazyTool('NoteTool') },
+    { path: '/tool/mock-api', name: 'MockApiTool', component: lazyTool('MockApiTool') },
   ],
 })
 

@@ -31,6 +31,7 @@ import {
   QrCodeIcon,
   PencilSquareIcon,
   WrenchIcon,
+  ServerStackIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -60,6 +61,7 @@ const iconComponentMap: Record<string, any> = {
   QrCodeIcon,
   PencilSquareIcon,
   WrenchIcon,
+  ServerStackIcon,
 }
 
 const categoryIconMap: Record<string, any> = {

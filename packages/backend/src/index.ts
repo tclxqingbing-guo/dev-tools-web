@@ -24,6 +24,7 @@ import { notesRouter } from './routes/notes.js'
 import { wishesRouter } from './routes/wishes.js'
 import { dictionaryRouter } from './routes/dictionary.js'
 import { ttsRouter } from './routes/tts.js'
+import { mockRouter } from './routes/mock.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
@@ -40,6 +41,7 @@ app.use('/api/notes', notesRouter)
 app.use('/api/wishes', wishesRouter)
 app.use('/api/dictionary', dictionaryRouter)
 app.use('/api/tts', ttsRouter)
+app.use('/api/mock', mockRouter)
 
 app.listen(PORT, () => {
   const hasAi =
