@@ -39,7 +39,7 @@ RUN npm install --omit=dev
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
 
-FROM ${BASE_IMAGE_PREFIX}/nginx:alpine AS frontend-runtime
+FROM harbor.17usoft.com/bx/base/nginx:alpine AS frontend-runtime
 COPY --from=frontend-build /app/packages/frontend/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
