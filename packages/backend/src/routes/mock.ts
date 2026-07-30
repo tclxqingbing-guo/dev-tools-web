@@ -4,8 +4,8 @@ import initSqlJs from 'sql.js'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { generateFromTemplate, generateList, evaluateConditions } from '../utils/mock-generator.js'
-import type { ConditionRule } from '../utils/mock-generator.js'
+import { generateFromTemplate, generateList, generateListAtPath, evaluateConditionGroups } from '../utils/mock-generator.js'
+import type { ConditionRule, ConditionGroup } from '../utils/mock-generator.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const dataDir = resolve(__dirname, '../../data')
@@ -270,20 +270,19 @@ mockRouter.all('/serve/{*splat}', async (req: Request, res: Response) => {
     }
 
     // 解析响应配置
-    let responseConfig: { conditions?: ConditionRule[]; list_count?: number } = {}
+    let responseConfig: { conditions?: (ConditionGroup | ConditionRule)[]; list_count?: number; list_path?: string } = {}
     try {
       responseConfig = JSON.parse(rule.response_config)
     } catch { /* 使用默认空配置 */ }
 
     // 检查条件返回
     if (responseConfig.conditions && responseConfig.conditions.length > 0) {
-      const condResult = evaluateConditions(responseConfig.conditions, {
+      const condResult = evaluateConditionGroups(responseConfig.conditions, {
         query: req.query as Record<string, unknown>,
         headers: req.headers as Record<string, unknown>,
         body: (req.body ?? {}) as Record<string, unknown>,
       })
       if (condResult) {
-        // 设置自定义响应头
         applyHeaders(res, rule.headers)
         res.status(condResult.statusCode).json(condResult.responseBody)
         return
@@ -301,7 +300,13 @@ mockRouter.all('/serve/{*splat}', async (req: Request, res: Response) => {
     // 生成动态数据
     let data: unknown
     if (responseConfig.list_count && responseConfig.list_count > 0) {
-      data = generateList(responseBody, responseConfig.list_count)
+      if (responseConfig.list_path) {
+        // 在指定路径处生成列表
+        data = generateListAtPath(generateFromTemplate(responseBody), responseConfig.list_path, responseConfig.list_count)
+      } else {
+        // 整体包装为数组（向后兼容）
+        data = generateList(responseBody, responseConfig.list_count)
+      }
     } else {
       data = generateFromTemplate(responseBody)
     }

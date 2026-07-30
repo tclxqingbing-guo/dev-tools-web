@@ -35,11 +35,15 @@ interface MockApi {
 }
 
 interface HeaderItem { key: string; value: string }
-interface ConditionItem {
+interface CondItem {
   field: string
   source: 'query' | 'header' | 'body'
   operator: 'eq' | 'neq' | 'gt' | 'lt' | 'contains' | 'exists'
   value: string
+}
+interface ConditionGroup {
+  logic: 'AND' | 'OR'
+  conditions: CondItem[]
   status_code: number
   response_body: string
 }
@@ -65,8 +69,9 @@ const form = ref({
   response_body: '{\n  "code": 0,\n  "message": "success",\n  "data": {}\n}',
 })
 const headerItems = ref<HeaderItem[]>([])
-const conditionItems = ref<ConditionItem[]>([])
+const conditionGroups = ref<ConditionGroup[]>([])
 const listCount = ref(0)
+const listPath = ref('')
 
 const filteredList = computed(() => {
   if (!searchQuery.value.trim()) return list.value
@@ -121,8 +126,9 @@ const openCreate = () => {
   modalMode.value = 'create'
   form.value = { id: 0, name: '', method: 'GET', path: '/', status_code: 200, delay_ms: 0, enabled: 1, response_body: '{\n  "code": 0,\n  "message": "success",\n  "data": {}\n}' }
   headerItems.value = []
-  conditionItems.value = []
+  conditionGroups.value = []
   listCount.value = 0
+  listPath.value = ''
   modalOpen.value = true
 }
 
@@ -147,9 +153,10 @@ const openEdit = (item: MockApi) => {
   // 解析 response_config
   try {
     const config = JSON.parse(item.response_config)
-    conditionItems.value = config.conditions || []
+    conditionGroups.value = migrateConditions(config.conditions || [])
     listCount.value = config.list_count || 0
-  } catch { conditionItems.value = []; listCount.value = 0 }
+    listPath.value = config.list_path || ''
+  } catch { conditionGroups.value = []; listCount.value = 0; listPath.value = '' }
   modalOpen.value = true
 }
 
@@ -172,9 +179,10 @@ const openView = (item: MockApi) => {
   } catch { headerItems.value = [] }
   try {
     const config = JSON.parse(item.response_config)
-    conditionItems.value = config.conditions || []
+    conditionGroups.value = migrateConditions(config.conditions || [])
     listCount.value = config.list_count || 0
-  } catch { conditionItems.value = []; listCount.value = 0 }
+    listPath.value = config.list_path || ''
+  } catch { conditionGroups.value = []; listCount.value = 0; listPath.value = '' }
   modalOpen.value = true
 }
 
@@ -205,8 +213,9 @@ const save = async () => {
     const headers: Record<string, string> = {}
     headerItems.value.forEach(h => { if (h.key.trim()) headers[h.key.trim()] = h.value })
     const responseConfig: Record<string, unknown> = {}
-    if (conditionItems.value.length > 0) responseConfig.conditions = conditionItems.value
+    if (conditionGroups.value.length > 0) responseConfig.conditions = conditionGroups.value
     if (listCount.value > 0) responseConfig.list_count = listCount.value
+    if (listPath.value.trim()) responseConfig.list_path = listPath.value.trim()
 
     const payload = {
       name: form.value.name,
@@ -266,10 +275,45 @@ const toggle = async (item: MockApi) => {
 const addHeader = () => headerItems.value.push({ key: '', value: '' })
 /** 删除 header 行 */
 const removeHeader = (idx: number) => headerItems.value.splice(idx, 1)
-/** 添加条件行 */
-const addCondition = () => conditionItems.value.push({ field: '', source: 'query', operator: 'eq', value: '', status_code: 200, response_body: '{}' })
-/** 删除条件行 */
-const removeCondition = (idx: number) => conditionItems.value.splice(idx, 1)
+/** 添加条件组 */
+const addConditionGroup = () => conditionGroups.value.push({ logic: 'AND', conditions: [{ field: '', source: 'query', operator: 'eq', value: '' }], status_code: 200, response_body: '{}' })
+/** 删除条件组 */
+const removeConditionGroup = (idx: number) => conditionGroups.value.splice(idx, 1)
+/** 在条件组内添加条件 */
+const addCondItem = (group: ConditionGroup) => group.conditions.push({ field: '', source: 'query', operator: 'eq', value: '' })
+/** 删除条件组内条件 */
+const removeCondItem = (group: ConditionGroup, idx: number) => group.conditions.splice(idx, 1)
+
+/** 兼容旧版单条件格式，迁移为条件组 */
+function migrateConditions(conditions: any[]): ConditionGroup[] {
+  if (!conditions.length) return []
+  // 新版格式：已有 logic + conditions 结构
+  if (conditions[0].logic && conditions[0].conditions) return conditions
+  // 旧版格式：每个 condition 独立带 response_body
+  return conditions.map(c => ({
+    logic: 'AND' as const,
+    conditions: [{ field: c.field, source: c.source, operator: c.operator, value: c.value }],
+    status_code: c.status_code ?? 200,
+    response_body: c.response_body ?? '{}',
+  }))
+}
+
+/** 动态值生成器列表 */
+const generators = [
+  { label: '随机字符串', value: '@string(6,12)' },
+  { label: '随机整数', value: '@int(1,100)' },
+  { label: '随机浮点数', value: '@float(0,100,1,2)' },
+  { label: 'UUID', value: '@uuid' },
+  { label: '时间戳', value: '@timestamp' },
+  { label: '日期时间', value: '@datetime(yyyy-MM-dd HH:mm:ss)' },
+  { label: '随机布尔', value: '@boolean' },
+  { label: '随机选取', value: '@pick(男,女)' },
+]
+
+/** 插入占位符到 response_body 光标位置 */
+const insertPlaceholder = (val: string) => {
+  form.value.response_body += `"${val}"`
+}
 
 const formatTime = (t: string) => {
   try { return new Date(t).toLocaleString('zh-CN') } catch { return t }
@@ -391,8 +435,8 @@ onMounted(fetchList)
           </div>
         </div>
 
-        <!-- 状态码 & 延迟 -->
-        <div class="grid grid-cols-3 gap-3">
+        <!-- 状态码 & 延迟 & 列表配置 -->
+        <div class="grid grid-cols-4 gap-3">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">状态码</label>
             <input v-model.number="form.status_code" :disabled="modalMode === 'view'" type="number" class="w-full px-3 py-2 text-sm glass-input" />
@@ -402,8 +446,12 @@ onMounted(fetchList)
             <input v-model.number="form.delay_ms" :disabled="modalMode === 'view'" type="number" min="0" class="w-full px-3 py-2 text-sm glass-input" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">列表数量 (0=不生成列表)</label>
+            <label class="block text-xs font-medium text-slate-500 mb-1">列表数量 (0=不生成)</label>
             <input v-model.number="listCount" :disabled="modalMode === 'view'" type="number" min="0" max="1000" class="w-full px-3 py-2 text-sm glass-input" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">列表路径 (如 data.list)</label>
+            <input v-model="listPath" :disabled="modalMode === 'view'" placeholder="留空=整体包装" class="w-full px-3 py-2 text-sm glass-input font-mono" />
           </div>
         </div>
 
@@ -423,10 +471,14 @@ onMounted(fetchList)
 
         <!-- Response Body -->
         <div>
-          <label class="block text-xs font-medium text-slate-500 mb-1">
-            Response Body
-            <span class="text-slate-400 font-normal ml-2">支持占位符: @string(min,max) @int(min,max) @uuid @timestamp @boolean @pick(a,b,c) @datetime(format)</span>
-          </label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-medium text-slate-500">Response Body</label>
+            <div class="flex items-center gap-1 flex-wrap">
+              <button v-for="g in generators" :key="g.value" @click="insertPlaceholder(g.value)" :disabled="modalMode === 'view'" class="px-1.5 py-0.5 text-[10px] rounded bg-slate-100 text-slate-500 hover:bg-accent/10 hover:text-accent cursor-pointer transition-colors" :title="g.value">
+                {{ g.label }}
+              </button>
+            </div>
+          </div>
           <textarea
             v-model="form.response_body"
             :disabled="modalMode === 'view'"
@@ -440,11 +492,24 @@ onMounted(fetchList)
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-medium text-slate-500">条件返回</label>
-            <button v-if="modalMode !== 'view'" @click="addCondition" class="text-xs text-accent hover:underline cursor-pointer">+ 添加条件</button>
+            <button v-if="modalMode !== 'view'" @click="addConditionGroup" class="text-xs text-accent hover:underline cursor-pointer">+ 添加条件组</button>
           </div>
-          <div v-if="conditionItems.length === 0" class="text-xs text-slate-400 py-1">无条件规则，将直接返回 Response Body</div>
-          <div v-for="(cond, idx) in conditionItems" :key="idx" class="p-3 mb-2 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+          <div v-if="conditionGroups.length === 0" class="text-xs text-slate-400 py-1">无条件规则，将直接返回 Response Body</div>
+          <div v-for="(group, gIdx) in conditionGroups" :key="gIdx" class="p-3 mb-2 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <!-- 条件组头部：逻辑选择 + 状态码 + 删除 -->
             <div class="flex items-center gap-2">
+              <select v-model="group.logic" :disabled="modalMode === 'view'" class="px-2 py-1 text-xs glass-input font-bold">
+                <option value="AND">且 (AND)</option>
+                <option value="OR">或 (OR)</option>
+              </select>
+              <span class="text-xs text-slate-400">状态码</span>
+              <input v-model.number="group.status_code" :disabled="modalMode === 'view'" type="number" class="w-16 px-2 py-1 text-xs glass-input" />
+              <div class="flex-1" />
+              <button v-if="modalMode !== 'view'" @click="addCondItem(group)" class="text-xs text-accent hover:underline cursor-pointer">+ 条件</button>
+              <button v-if="modalMode !== 'view'" @click="removeConditionGroup(gIdx)" class="p-1 text-slate-400 hover:text-red-500 cursor-pointer"><TrashIcon class="w-3.5 h-3.5" /></button>
+            </div>
+            <!-- 条件行 -->
+            <div v-for="(cond, cIdx) in group.conditions" :key="cIdx" class="flex items-center gap-2">
               <select v-model="cond.source" :disabled="modalMode === 'view'" class="px-2 py-1.5 text-xs glass-input">
                 <option value="query">Query</option>
                 <option value="header">Header</option>
@@ -460,11 +525,11 @@ onMounted(fetchList)
                 <option value="exists">存在</option>
               </select>
               <input v-model="cond.value" :disabled="modalMode === 'view'" placeholder="值" class="flex-1 px-2 py-1.5 text-xs glass-input font-mono" />
-              <input v-model.number="cond.status_code" :disabled="modalMode === 'view'" type="number" placeholder="状态码" class="w-16 px-2 py-1.5 text-xs glass-input" />
-              <button v-if="modalMode !== 'view'" @click="removeCondition(idx)" class="p-1 text-slate-400 hover:text-red-500 cursor-pointer"><TrashIcon class="w-3.5 h-3.5" /></button>
+              <button v-if="modalMode !== 'view' && group.conditions.length > 1" @click="removeCondItem(group, cIdx)" class="p-1 text-slate-400 hover:text-red-500 cursor-pointer"><TrashIcon class="w-3 h-3" /></button>
             </div>
+            <!-- 条件组响应体 -->
             <textarea
-              v-model="cond.response_body"
+              v-model="group.response_body"
               :disabled="modalMode === 'view'"
               rows="3"
               class="w-full px-2 py-1.5 text-xs glass-input font-mono resize-y"
