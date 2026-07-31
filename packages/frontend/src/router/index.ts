@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import WishPool from '../views/WishPool.vue'
+import SettingsPage from '../views/SettingsPage.vue'
 
 const toolModules = import.meta.glob('../views/tools/*.vue')
 
@@ -17,6 +18,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: HomePage },
     { path: '/wishes', name: 'wishes', component: WishPool },
+    { path: '/settings', name: 'settings', component: SettingsPage },
     { path: '/tool/json-formatter', name: 'JsonFormatter', component: lazyTool('JsonFormatter') },
     { path: '/tool/xml-formatter', name: 'XmlFormatter', component: lazyTool('XmlFormatter') },
     { path: '/tool/url-encoder', name: 'UrlEncoder', component: lazyTool('UrlEncoder') },
@@ -42,6 +44,7 @@ const router = createRouter({
     { path: '/tool/document-text-parser', name: 'DocumentTextParser', component: lazyTool('DocumentTextParser') },
     { path: '/tool/note-tool', name: 'NoteTool', component: lazyTool('NoteTool') },
     { path: '/tool/mock-api', name: 'MockApiTool', component: lazyTool('MockApiTool') },
+    { path: '/tool/mini-program-qrcode', name: 'MiniProgramQrCodeTool', component: lazyTool('MiniProgramQrCodeTool') },
   ],
 })
 

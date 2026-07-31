@@ -6,7 +6,7 @@
 
 | 映射目标（容器内） | 说明 |
 |-------------------|------|
-| `/app/data`       | 后端 SQLite 数据目录，内含 `notes.db`（笔记）、`wishes.db`（许愿/意见箱）。必须映射，否则重启容器后数据丢失。 |
+| `/app/data`       | 后端数据目录，包含笔记、许愿池、设置、小程序码数据库以及设置加密密钥。必须映射，否则重启容器后数据丢失。 |
 
 其他无需映射：
 
@@ -76,21 +76,16 @@ cp .env.example .env
 vim .env
 ```
 
-按需填写，例如：
+只保留项目元数据和服务启动前必须知道的基础设施参数，例如：
 
 ```env
-# 前端访问端口（浏览器访问的端口）
+PROJECT_NAME=bx-tools
+PROJECT_ENV=production
+BACKEND_PORT=3001
 FRONTEND_PORT=8080
-
-# 可选：AI 能力
-AI_API_BASE_URL=https://api.openai.com
-AI_API_KEY=sk-xxx
-# 若只用分用途密钥、不设 AI_API_KEY，务必在 compose 里传入（仓库已包含）：
-# AI_API_KEY-CHAT=sk-xxx
-# AI_API_KEY-IMAGE=sk-xxx
 ```
 
-保存后确认 `docker-compose.yml` 会通过 **`env_file: .env`** 把整份 `.env` 注入 backend（带连字符的 `AI_API_KEY-CHAT` 等才能正确传入；不要用 `${AI_API_KEY-CHAT:-}` 写在 `environment` 里，Compose 会解析错）。
+大模型、微信小程序、Sentry、TTS 等运行期配置统一在页面右上角的“设置”中维护。敏感配置会加密保存到 `/app/data/settings.db`，加密密钥位于 `/app/data/.settings.key`，备份时必须一起保留。
 
 ### 4. 构建并启动
 
@@ -220,7 +215,7 @@ docker compose up -d
 
 ## 五、小结
 
-- **必须持久化的只有**：后端数据目录 `/app/data`（内含 `notes.db`、`wishes.db`）。
+- **必须持久化的只有**：后端数据目录 `/app/data`（包含业务数据库和设置加密密钥）。
 - 已用命名 volume `backend-data` 时，数据在 Docker 管理目录下，重启/重建容器不会丢。
 - 若要自己备份或迁移，可改为绑定宿主机目录，例如 `/opt/dev-tools-web/data:/app/data`。
 - **后期更新**：服务器上 `git pull` → `docker compose build --no-cache` → `docker compose up -d`，数据不会丢失。

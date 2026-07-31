@@ -32,6 +32,8 @@ import {
   PencilSquareIcon,
   WrenchIcon,
   ServerStackIcon,
+  DevicePhoneMobileIcon,
+  Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -62,6 +64,7 @@ const iconComponentMap: Record<string, any> = {
   PencilSquareIcon,
   WrenchIcon,
   ServerStackIcon,
+  DevicePhoneMobileIcon,
 }
 
 const categoryIconMap: Record<string, any> = {
@@ -136,12 +139,21 @@ const openTool = (tool: Tool) => {
               autocomplete="off"
             />
           </div>
-          <RouterLink
-            to="/wishes"
-            class="text-sm text-slate-500 hover:text-accent transition-colors cursor-pointer whitespace-nowrap"
-          >
-            许愿池 | 意见箱
-          </RouterLink>
+          <div class="flex items-center gap-3">
+            <RouterLink
+              to="/settings"
+              class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-accent transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Cog6ToothIcon class="w-4 h-4" />
+              设置
+            </RouterLink>
+            <RouterLink
+              to="/wishes"
+              class="text-sm text-slate-500 hover:text-accent transition-colors cursor-pointer whitespace-nowrap"
+            >
+              许愿池 | 意见箱
+            </RouterLink>
+          </div>
         </div>
       </header>
 

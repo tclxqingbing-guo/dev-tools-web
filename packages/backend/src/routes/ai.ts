@@ -1,27 +1,51 @@
 import type { IRouter } from 'express'
 import { Router } from 'express'
+import { getSettings } from '../services/settings-store.js'
 
 export const aiRouter: IRouter = Router()
 
-const getBaseUrl = () => {
-  let baseUrl = (process.env.AI_API_BASE_URL || '').replace(/\/$/, '')
+const getBaseUrl = async () => {
+  const settings = await getSettings(['ai.baseUrl'])
+  let baseUrl = settings['ai.baseUrl'].replace(/\/$/, '')
   return baseUrl.replace(/\/v1\/?$/, '')
 }
 
-const getChatConfig = () => ({
-  baseUrl: getBaseUrl(),
-  apiKey: process.env['AI_API_KEY-CHAT'] || process.env.AI_API_KEY || '',
-})
+/**
+ * 读取聊天模型运行期配置。
+ *
+ * @return 聊天模型接口地址和密钥。
+ */
+const getChatConfig = async () => {
+  const settings = await getSettings([
+    'ai.sharedApiKey',
+    'ai.chatApiKey',
+  ])
+  return {
+    baseUrl: await getBaseUrl(),
+    apiKey: settings['ai.chatApiKey'] || settings['ai.sharedApiKey'],
+  }
+}
 
-const getImageConfig = () => ({
-  baseUrl: getBaseUrl(),
-  apiKey: process.env['AI_API_KEY-IMAGE'] || process.env.AI_API_KEY || '',
-})
+/**
+ * 读取图片模型运行期配置。
+ *
+ * @return 图片模型接口地址和密钥。
+ */
+const getImageConfig = async () => {
+  const settings = await getSettings([
+    'ai.sharedApiKey',
+    'ai.imageApiKey',
+  ])
+  return {
+    baseUrl: await getBaseUrl(),
+    apiKey: settings['ai.imageApiKey'] || settings['ai.sharedApiKey'],
+  }
+}
 
 const NON_CHAT_MODEL_PATTERN = /(embedding|ocr|^gpt-image|image|seedream|seededit)/i
 
 aiRouter.get('/models', async (_req, res) => {
-  const { baseUrl, apiKey } = getChatConfig()
+  const { baseUrl, apiKey } = await getChatConfig()
   if (!baseUrl || !apiKey) {
     res.status(400).json({ message: 'AI API not configured' })
     return
@@ -45,7 +69,7 @@ aiRouter.get('/models', async (_req, res) => {
 })
 
 aiRouter.post('/chat', async (req, res) => {
-  const { baseUrl, apiKey } = getChatConfig()
+  const { baseUrl, apiKey } = await getChatConfig()
   if (!baseUrl || !apiKey) {
     res.status(400).json({ message: 'AI API not configured' })
     return
@@ -106,7 +130,7 @@ aiRouter.post('/chat', async (req, res) => {
 })
 
 aiRouter.post('/image', async (req, res) => {
-  const { baseUrl, apiKey } = getImageConfig()
+  const { baseUrl, apiKey } = await getImageConfig()
   if (!baseUrl || !apiKey) {
     res.status(400).json({ message: 'AI API not configured' })
     return
@@ -133,7 +157,7 @@ aiRouter.post('/image', async (req, res) => {
 })
 
 aiRouter.post('/tts', async (req, res) => {
-  const { baseUrl, apiKey } = getChatConfig()
+  const { baseUrl, apiKey } = await getChatConfig()
   if (!baseUrl || !apiKey) {
     res.status(400).json({ message: 'AI API not configured' })
     return

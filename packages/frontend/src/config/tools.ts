@@ -243,6 +243,16 @@ export const tools: Tool[] = [
     usageScore: 7,
   },
   {
+    name: '小程序码平台',
+    icon: 'DevicePhoneMobileIcon',
+    description: '将 WebView 地址生成为可追踪、可停用的微信小程序码',
+    route: '/tool/mini-program-qrcode',
+    component: 'MiniProgramQrCodeTool',
+    keywords: ['小程序码', '微信', 'webview', '短码', 'scene', '二维码'],
+    category: '开发工具',
+    usageScore: 10,
+  },
+  {
     name: '笔记本',
     icon: 'PencilSquareIcon',
     description: '支持 Markdown 语法的笔记本',

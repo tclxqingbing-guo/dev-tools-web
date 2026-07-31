@@ -6,9 +6,7 @@ services:
       target: backend-runtime
     container_name: devtools-backend
     restart: unless-stopped
-    # Load .env into the container so names like AI_API_KEY-CHAT work. Compose
-    # ${VAR:-} interpolation does not treat hyphens as part of VAR, so
-    # ${AI_API_KEY-CHAT:-} becomes the literal "CHAT:-".
+    # 仅保留服务启动所需的基础设施配置；业务配置统一在设置中心维护。
     env_file:
       - .env
     environment:
@@ -23,10 +21,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: frontend-runtime
-      args:
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
-        VITE_SENTRY_TRACES_SAMPLE_RATE: ${VITE_SENTRY_TRACES_SAMPLE_RATE:-1}
-        VITE_SENTRY_TEST_EVENT: ${VITE_SENTRY_TEST_EVENT:-false}
     container_name: devtools-frontend
     restart: unless-stopped
     ports:

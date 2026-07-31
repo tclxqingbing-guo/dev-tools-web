@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ArrowLeftIcon, ChevronLeftIcon } from '@heroicons/vue/24/outline'
+import { ChevronLeftIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
 defineProps<{
   title: string
@@ -24,12 +24,21 @@ const router = useRouter()
           <!-- <div class="flex-shrink-0 w-px h-5 bg-slate-200" /> -->
           <h1 class="text-base font-semibold truncate text-slate-800">{{ title }}</h1>
         </div>
-        <router-link
-          to="/wishes"
-          class="flex-shrink-0 text-sm transition-colors cursor-pointer text-slate-500 hover:text-accent"
-        >
-          许愿池 | 意见箱
-        </router-link>
+        <div class="flex items-center gap-4">
+          <router-link
+            to="/settings"
+            class="inline-flex items-center gap-1 flex-shrink-0 text-sm transition-colors cursor-pointer text-slate-500 hover:text-accent"
+          >
+            <Cog6ToothIcon class="w-4 h-4" />
+            设置
+          </router-link>
+          <router-link
+            to="/wishes"
+            class="flex-shrink-0 text-sm transition-colors cursor-pointer text-slate-500 hover:text-accent"
+          >
+            许愿池 | 意见箱
+          </router-link>
+        </div>
       </div>
     </header>
     <main class="px-6 py-6 mx-auto max-w-7xl">

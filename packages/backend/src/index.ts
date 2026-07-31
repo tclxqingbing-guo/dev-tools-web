@@ -25,6 +25,8 @@ import { wishesRouter } from './routes/wishes.js'
 import { dictionaryRouter } from './routes/dictionary.js'
 import { ttsRouter } from './routes/tts.js'
 import { mockRouter } from './routes/mock.js'
+import { settingsRouter } from './routes/settings.js'
+import { miniProgramQrCodeRouter } from './routes/mini-program-qrcode.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
@@ -42,14 +44,9 @@ app.use('/api/wishes', wishesRouter)
 app.use('/api/dictionary', dictionaryRouter)
 app.use('/api/tts', ttsRouter)
 app.use('/api/mock', mockRouter)
+app.use('/api/settings', settingsRouter)
+app.use('/api/mini-program-qrcode', miniProgramQrCodeRouter)
 
 app.listen(PORT, () => {
-  const hasAi =
-    !!(
-      process.env.AI_API_BASE_URL &&
-      (process.env.AI_API_KEY ||
-        process.env['AI_API_KEY-CHAT'] ||
-        process.env['AI_API_KEY-IMAGE'])
-    )
-  console.log(`Backend running on http://localhost:${PORT} | AI API: ${hasAi ? 'configured' : 'not configured'}`)
+  console.log(`Backend running on http://localhost:${PORT}`)
 })

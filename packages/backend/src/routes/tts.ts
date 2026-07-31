@@ -1,9 +1,6 @@
 import type { IRouter } from 'express'
 import { Router } from 'express'
-
-/** 与前端 TTS 工具一致，仅允许从该主机拉取合成结果，避免开放代理被滥用 */
-const TTS_ORIGIN = 'https://bx-tts.17usoft.com'
-const TTS_HOST = new URL(TTS_ORIGIN).hostname
+import { getSetting } from '../services/settings-store.js'
 
 export const ttsRouter: IRouter = Router()
 
@@ -24,13 +21,15 @@ ttsRouter.post('/fetch-audio', async (req, res) => {
   }
 
   let target: URL
+  let ttsOrigin: URL
   try {
-    target = new URL(raw.replace(/^\//, ''), `${TTS_ORIGIN}/`)
+    ttsOrigin = new URL(await getSetting('tts.origin'))
+    target = new URL(raw.replace(/^\//, ''), `${ttsOrigin.origin}/`)
   } catch {
-    res.status(400).json({ message: 'invalid path' })
+    res.status(400).json({ message: 'TTS 服务地址配置无效' })
     return
   }
-  if (target.hostname !== TTS_HOST) {
+  if (target.hostname !== ttsOrigin.hostname) {
     res.status(400).json({ message: 'invalid host' })
     return
   }
