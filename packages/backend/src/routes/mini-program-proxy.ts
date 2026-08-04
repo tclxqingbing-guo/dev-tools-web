@@ -232,7 +232,9 @@ miniProgramProxyRouter.use(async (req, res, next: NextFunction) => {
   try {
     const pathCode = typeof req.query.__mini_proxy_code === 'string'
       ? req.query.__mini_proxy_code
-      : req.path.split('/').filter(Boolean)[0]
+      : req.baseUrl.endsWith('/mini-proxy')
+        ? req.path.split('/').filter(Boolean)[0]
+        : ''
     if (!pathCode) {
       next()
       return
