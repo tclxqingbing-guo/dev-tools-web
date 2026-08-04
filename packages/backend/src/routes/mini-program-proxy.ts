@@ -1,4 +1,4 @@
-import type { IRouter, Request, Response } from 'express'
+import type { IRouter, NextFunction, Request, Response } from 'express'
 import { Router } from 'express'
 import { getActiveQrCodeRecord, getAllowedDomains, type MiniProgramQrCodeRow } from './mini-program-qrcode.js'
 
@@ -40,6 +40,15 @@ function isAllowedTarget(targetUrl: URL, allowedDomains: string[]): boolean {
  */
 function getTargetRequestUrl(req: Request, record: MiniProgramQrCodeRow): URL {
   const base = new URL(record.targetUrl)
+  const pathCode = typeof req.query.__mini_proxy_code === 'string' ? req.query.__mini_proxy_code : ''
+  if (pathCode) {
+    const target = new URL(record.targetUrl)
+    const incoming = new URL(req.originalUrl, 'http://mini-proxy')
+    incoming.searchParams.delete('__mini_proxy_code')
+    target.pathname = req.path
+    target.search = incoming.search
+    return target
+  }
   const segments = req.path.split('/').filter(Boolean)
   const query = new URL(req.originalUrl, 'http://mini-proxy').search
   if (!segments.length) return base
@@ -58,7 +67,7 @@ function getTargetRequestUrl(req: Request, record: MiniProgramQrCodeRow): URL {
  * @param code 短码。
  * @return 可由浏览器继续请求的地址。
  */
-function rewriteUrl(rawValue: string, documentUrl: URL, code: string): string {
+function rewriteUrl(rawValue: string, documentUrl: URL, code: string, pathMode = false): string {
   const value = rawValue.trim()
   if (!value || value.startsWith('#') || /^(?:data|blob|javascript|mailto|tel):/i.test(value)) {
     return rawValue
@@ -66,6 +75,10 @@ function rewriteUrl(rawValue: string, documentUrl: URL, code: string): string {
   try {
     const resolved = new URL(value, documentUrl)
     if (resolved.origin !== documentUrl.origin) return rawValue
+    if (pathMode) {
+      resolved.searchParams.set('__mini_proxy_code', code)
+      return `${resolved.pathname}${resolved.search}`
+    }
     return `/mini-proxy/${encodeURIComponent(code)}/__root__${resolved.pathname}${resolved.search}`
   } catch {
     return rawValue
@@ -81,18 +94,18 @@ function rewriteUrl(rawValue: string, documentUrl: URL, code: string): string {
  * @param contentType 内容类型。
  * @return 重写后的文本。
  */
-function rewriteContent(content: string, documentUrl: URL, code: string, contentType: string): string {
+function rewriteContent(content: string, documentUrl: URL, code: string, contentType: string, pathMode = false): string {
   if (contentType.includes('text/html')) {
     return content.replace(
       /(\s(?:src|href|action|poster|data-src)\s*=\s*)(["'])(.*?)\2/gi,
       (_match, prefix: string, quote: string, value: string) =>
-        `${prefix}${quote}${rewriteUrl(value, documentUrl, code)}${quote}`
+        `${prefix}${quote}${rewriteUrl(value, documentUrl, code, pathMode)}${quote}`
     )
   }
   if (contentType.includes('text/css')) {
     return content.replace(
       /url\(\s*(["']?)(.*?)\1\s*\)/gi,
-      (_match, quote: string, value: string) => `url(${quote}${rewriteUrl(value, documentUrl, code)}${quote})`
+      (_match, quote: string, value: string) => `url(${quote}${rewriteUrl(value, documentUrl, code, pathMode)}${quote})`
     )
   }
   return content
@@ -136,12 +149,15 @@ function createForwardHeaders(req: Request): Record<string, string> {
  * @param code 短码。
  * @return 网关跳转地址或原值。
  */
-function rewriteLocation(location: string, targetUrl: URL, code: string): string {
+function rewriteLocation(location: string, targetUrl: URL, code: string, pathMode = false): string {
   try {
     const resolved = new URL(location, targetUrl)
-    return resolved.origin === targetUrl.origin
-      ? `/mini-proxy/${encodeURIComponent(code)}/__root__${resolved.pathname}${resolved.search}`
-      : location
+    if (resolved.origin !== targetUrl.origin) return location
+    if (pathMode) {
+      resolved.searchParams.set('__mini_proxy_code', code)
+      return `${resolved.pathname}${resolved.search}`
+    }
+    return `/mini-proxy/${encodeURIComponent(code)}/__root__${resolved.pathname}${resolved.search}`
   } catch {
     return location
   }
@@ -154,15 +170,16 @@ function rewriteLocation(location: string, targetUrl: URL, code: string): string
  * @param res Express 响应。
  * @return 无返回值。
  */
-async function proxyRequest(req: Request, res: Response): Promise<void> {
+async function proxyRequest(req: Request, res: Response, routeCode?: string): Promise<void> {
   const segments = req.path.split('/').filter(Boolean)
-  const code = segments[0] || ''
+  const code = routeCode || segments[0] || ''
   const record = await getActiveQrCodeRecord(code)
   if (!record) {
     res.status(404).json({ message: '小程序码不存在、已停用或已过期' })
     return
   }
   const targetUrl = getTargetRequestUrl(req, record)
+  const pathMode = typeof req.query.__mini_proxy_code === 'string'
   if (!isAllowedTarget(targetUrl, await getAllowedDomains())) {
     res.status(403).json({ message: '目标域名不在当前 WebView 白名单中' })
     return
@@ -186,7 +203,7 @@ async function proxyRequest(req: Request, res: Response): Promise<void> {
   })
 
   const location = upstream.headers.get('location')
-  if (location) res.setHeader('Location', rewriteLocation(location, targetUrl, code))
+  if (location) res.setHeader('Location', rewriteLocation(location, targetUrl, code, pathMode))
   const setCookie = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() || []
   for (const cookie of setCookie) {
     let normalized = cookie
@@ -204,16 +221,23 @@ async function proxyRequest(req: Request, res: Response): Promise<void> {
   }
   if (contentType.includes('text/html') || contentType.includes('text/css')) {
     const content = await upstream.text()
-    res.send(rewriteContent(content, targetUrl, code, contentType))
+    res.send(rewriteContent(content, targetUrl, code, contentType, pathMode))
     return
   }
   res.send(Buffer.from(await upstream.arrayBuffer()))
 }
 
 export const miniProgramProxyRouter: IRouter = Router()
-miniProgramProxyRouter.use(async (req, res) => {
+miniProgramProxyRouter.use(async (req, res, next: NextFunction) => {
   try {
-    await proxyRequest(req, res)
+    const pathCode = typeof req.query.__mini_proxy_code === 'string'
+      ? req.query.__mini_proxy_code
+      : req.path.split('/').filter(Boolean)[0]
+    if (!pathCode) {
+      next()
+      return
+    }
+    await proxyRequest(req, res, pathCode)
   } catch (error) {
     res.status(502).json({ message: `WebView 网关转发失败：${(error as Error).message}` })
   }

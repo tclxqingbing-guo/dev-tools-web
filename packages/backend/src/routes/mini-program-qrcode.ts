@@ -215,8 +215,12 @@ export async function getActiveQrCodeRecord(code: string): Promise<MiniProgramQr
  */
 export async function buildProxyUrl(code: string): Promise<string> {
   const settings = await getSettings(['wechat.proxyBaseUrl'])
+  const record = await getActiveQrCodeRecord(code)
   const baseUrl = (settings['wechat.proxyBaseUrl'] || 'https://bx-tools.17usoft.com').replace(/\/$/, '')
-  return `${baseUrl}/mini-proxy/${encodeURIComponent(code)}`
+  if (!record) return `${baseUrl}/mini-proxy/${encodeURIComponent(code)}`
+  const target = new URL(record.targetUrl)
+  target.searchParams.set('__mini_proxy_code', code)
+  return `${baseUrl}${target.pathname}${target.search}`
 }
 
 export const miniProgramQrCodeRouter: IRouter = Router()

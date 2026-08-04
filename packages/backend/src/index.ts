@@ -35,6 +35,7 @@ const PORT = process.env.BACKEND_PORT || 3001
 app.use(cors())
 // 网关需要读取原始表单请求体，因此必须放在全局 JSON body parser 之前。
 app.use('/mini-proxy', miniProgramProxyRouter)
+app.use('/', miniProgramProxyRouter)
 app.use(express.json({ limit: '50mb' }))
 
 app.get('/api/health', (_req, res) => {
