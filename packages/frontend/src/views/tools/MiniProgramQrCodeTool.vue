@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import {
@@ -40,6 +40,35 @@ const form = reactive({
 const selectedImageUrl = computed(() =>
   selected.value ? `/api/mini-program-qrcode/${selected.value.id}/image` : ''
 )
+
+/**
+ * 获取历史记录对应的二维码图片地址。
+ *
+ * @param record 小程序码记录。
+ * @return 二维码图片地址。
+ */
+function getImageUrl(record: MiniProgramQrCode) {
+  return `/api/mini-program-qrcode/${record.id}/image`
+}
+
+/**
+ * 关闭二维码放大预览。
+ *
+ * @return 无返回值。
+ */
+function closePreview() {
+  selected.value = null
+}
+
+/**
+ * 支持使用 Escape 快捷关闭预览弹框。
+ *
+ * @param event 键盘事件。
+ * @return 无返回值。
+ */
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closePreview()
+}
 
 /**
  * 加载小程序码历史记录。
@@ -176,6 +205,11 @@ function formatTime(value: string) {
 onMounted(() => {
   fetchRecords()
   fetchConfig()
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -250,21 +284,6 @@ onMounted(() => {
           </div>
         </section>
 
-        <section v-if="selected" class="glass-card p-5 text-center">
-          <div class="mx-auto mb-3 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
-            <img :src="selectedImageUrl" :alt="selected.title" class="block h-auto w-full" />
-          </div>
-          <h3 class="font-semibold text-slate-800">{{ selected.title }}</h3>
-          <p class="mt-1 font-mono text-xs text-slate-400">scene=q={{ selected.code }}</p>
-          <a
-            :href="selectedImageUrl"
-            download
-            class="btn-secondary mt-4 inline-flex items-center gap-2 text-sm"
-          >
-            <ArrowDownTrayIcon class="h-4 w-4" />
-            下载图片
-          </a>
-        </section>
       </aside>
 
       <section class="glass-card overflow-hidden">
@@ -287,9 +306,7 @@ onMounted(() => {
           <article
             v-for="record in records"
             :key="record.id"
-            class="group cursor-pointer px-5 py-4 transition-colors hover:bg-slate-50"
-            :class="{ 'bg-blue-50/50': selected?.id === record.id }"
-            @click="selected = record"
+            class="group px-5 py-4 transition-colors hover:bg-slate-50"
           >
             <div class="flex items-start gap-4">
               <div
@@ -327,6 +344,13 @@ onMounted(() => {
                   <span>过期 {{ formatTime(record.expiresAt) }}</span>
                 </div>
               </div>
+              <button
+                class="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+                :title="`查看 ${record.title} 二维码`"
+                @click="selected = record"
+              >
+                <img :src="getImageUrl(record)" :alt="`${record.title} 小程序码`" class="h-full w-full object-contain" />
+              </button>
               <div class="flex flex-shrink-0 items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
                 <button
                   class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -349,5 +373,52 @@ onMounted(() => {
         </div>
       </section>
     </div>
+
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="selected"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-5 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`${selected.title} 小程序码预览`"
+          @click.self="closePreview"
+        >
+          <div class="relative w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-2xl">
+            <button
+              class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="关闭预览"
+              @click="closePreview"
+            >
+              <span class="text-xl leading-none">×</span>
+            </button>
+            <div class="pr-10">
+              <p class="text-xs font-medium uppercase tracking-[0.18em] text-emerald-600">Mini Program QR</p>
+              <h2 class="mt-1 text-xl font-semibold text-slate-900">{{ selected.title }}</h2>
+              <p class="mt-1 font-mono text-xs text-slate-400">scene=q={{ selected.code }}</p>
+            </div>
+            <div class="mx-auto mt-6 max-w-[320px] rounded-2xl border border-slate-200 bg-white p-4 shadow-inner">
+              <img :src="selectedImageUrl" :alt="`${selected.title} 小程序码`" class="block h-auto w-full" />
+            </div>
+            <a
+              :href="selectedImageUrl"
+              :download="`${selected.code}.png`"
+              class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+            >
+              <ArrowDownTrayIcon class="h-4 w-4" />
+              下载二维码图片
+            </a>
+            <p class="mt-3 text-center text-xs text-slate-400">点击遮罩或按 Esc 关闭预览</p>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </ToolLayout>
 </template>
