@@ -29,12 +29,15 @@ function validateSetting(key: SettingKey, value: unknown): string {
   const normalized = value.trim()
   if (normalized.length > 4096) throw new Error(`${key} 内容过长`)
 
-  if (['ai.baseUrl', 'sentry.dsn', 'tts.origin'].includes(key) && normalized) {
+  if (['ai.baseUrl', 'sentry.dsn', 'tts.origin', 'wechat.proxyBaseUrl'].includes(key) && normalized) {
     const url = new URL(normalized)
     if (!['http:', 'https:'].includes(url.protocol)) {
       throw new Error(`${key} 必须使用 HTTP 或 HTTPS`)
     }
     if (key === 'tts.origin' && url.protocol !== 'https:' && url.hostname !== 'localhost') {
+      throw new Error(`${key} 必须使用 HTTPS`)
+    }
+    if (key === 'wechat.proxyBaseUrl' && url.protocol !== 'https:') {
       throw new Error(`${key} 必须使用 HTTPS`)
     }
   }

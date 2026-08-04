@@ -301,6 +301,18 @@ onMounted(fetchSettings)
               placeholder="pages/index/index"
             />
           </label>
+
+          <label class="mt-4 block">
+            <span class="mb-1.5 block text-xs font-medium text-slate-600">HTTPS WebView 网关地址</span>
+            <input
+              v-model="values['wechat.proxyBaseUrl']"
+              class="glass-input w-full px-3 py-2.5 text-sm"
+              placeholder="https://bx-tools.17usoft.com"
+            />
+            <span class="mt-1.5 block text-[11px] leading-5 text-slate-500">
+              小程序打开 HTTP QA 页面时，会通过此 HTTPS 域名转发。
+            </span>
+          </label>
         </section>
 
         <section class="glass-card p-5">

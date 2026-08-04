@@ -10,7 +10,7 @@ import { getSettings } from '../services/settings-store.js'
 
 type MiniProgramEnvVersion = 'develop' | 'trial' | 'release'
 
-interface MiniProgramQrCodeRow {
+export interface MiniProgramQrCodeRow {
   id: number
   code: string
   title: string
@@ -127,14 +127,17 @@ function mapRow(row: unknown[]): MiniProgramQrCodeRow {
  *
  * @param rawUrl 用户输入的 WebView 地址。
  * @param allowedDomains 允许打开的业务域名。
- * @return 规范化后的 HTTPS 地址。
+ * @return 规范化后的 HTTP 或 HTTPS 地址。
  */
 function validateTargetUrl(rawUrl: unknown, allowedDomains: string[]): string {
   if (typeof rawUrl !== 'string' || rawUrl.length > 4096) {
     throw new Error('请输入有效的 WebView 地址')
   }
   const url = new URL(rawUrl.trim())
-  if (url.protocol !== 'https:') throw new Error('WebView 地址必须使用 HTTPS')
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('WebView 地址只支持 HTTP 或 HTTPS')
+  }
+  if (url.username || url.password) throw new Error('WebView 地址不能包含账号密码')
   const hostname = url.hostname.toLowerCase()
   const allowed = allowedDomains.some(
     domain => hostname === domain || hostname.endsWith(`.${domain}`)
@@ -169,7 +172,7 @@ function detectImageType(value: Uint8Array): { mime: string; extension: string }
  *
  * @return 去重后的域名列表。
  */
-async function getAllowedDomains(): Promise<string[]> {
+export async function getAllowedDomains(): Promise<string[]> {
   const settings = await getSettings(['wechat.allowedWebviewDomains'])
   return [
     ...new Set(
@@ -179,6 +182,41 @@ async function getAllowedDomains(): Promise<string[]> {
         .filter(Boolean)
     ),
   ]
+}
+
+/**
+ * 查询可用的小程序码映射记录。
+ *
+ * @param code 小程序码短码。
+ * @return 未过期且启用的映射记录。
+ */
+export async function getActiveQrCodeRecord(code: string): Promise<MiniProgramQrCodeRow | null> {
+  if (!/^[A-Za-z0-9]{6,24}$/.test(code)) return null
+  const database = await getDb()
+  const row = queryOne(
+    database,
+    `SELECT id, code, title, target_url, env_version, enabled, expires_at, created_at, updated_at
+     FROM mini_program_qrcodes WHERE code = ?`,
+    [code]
+  )
+  if (!row) return null
+  const record = mapRow(row)
+  if (!record.enabled || (record.expiresAt && Date.parse(record.expiresAt) <= Date.now())) {
+    return null
+  }
+  return record
+}
+
+/**
+ * 生成小程序 WebView 使用的 HTTPS 网关地址。
+ *
+ * @param code 小程序码短码。
+ * @return 对外可访问的网关 URL。
+ */
+export async function buildProxyUrl(code: string): Promise<string> {
+  const settings = await getSettings(['wechat.proxyBaseUrl'])
+  const baseUrl = (settings['wechat.proxyBaseUrl'] || 'https://bx-tools.17usoft.com').replace(/\/$/, '')
+  return `${baseUrl}/mini-proxy/${encodeURIComponent(code)}`
 }
 
 export const miniProgramQrCodeRouter: IRouter = Router()
@@ -238,7 +276,7 @@ miniProgramQrCodeRouter.get('/resolve/:code', async (req, res) => {
       return
     }
     res.setHeader('Cache-Control', 'no-store')
-    res.json({ code: record.code, title: record.title, url: record.targetUrl })
+    res.json({ code: record.code, title: record.title, url: await buildProxyUrl(record.code) })
   } catch (error) {
     res.status(500).json({ message: (error as Error).message })
   }

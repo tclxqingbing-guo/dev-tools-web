@@ -209,10 +209,10 @@ onMounted(() => {
                 v-model="form.targetUrl"
                 rows="5"
                 class="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 font-mono text-xs leading-5 text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/60"
-                placeholder="https://www.qa.baoxianzj.com/yf/..."
+                placeholder="http://www.qa.baoxianzj.com/yf/..."
               />
               <span class="mt-1.5 block text-[11px] text-slate-500">
-                需要模拟永丰小程序环境时，请在地址中加入 from=yfSelf。
+                支持 HTTP QA 地址，生成后会自动通过 bx-tools HTTPS 网关转发；需要模拟永丰小程序环境时，请在地址中加入 from=yfSelf。
               </span>
               <span v-if="allowedDomains.length" class="mt-1 block text-[11px] text-slate-500">
                 允许域名：{{ allowedDomains.join('、') }}

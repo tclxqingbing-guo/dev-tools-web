@@ -22,6 +22,7 @@ export const SETTING_DEFAULTS = {
     'www.baoxianzj.com,www.qa.baoxianzj.com,www.t.baoxianzj.com',
   'wechat.defaultEnvVersion': 'trial',
   'wechat.qrPage': 'pages/index/index',
+  'wechat.proxyBaseUrl': 'https://bx-tools.17usoft.com',
   'sentry.dsn': '',
   'sentry.tracesSampleRate': '1',
   'sentry.testEvent': 'false',
