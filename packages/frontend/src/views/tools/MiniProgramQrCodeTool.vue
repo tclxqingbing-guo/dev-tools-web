@@ -4,6 +4,7 @@ import ToolLayout from '../../components/ToolLayout.vue'
 import { useToast } from '../../composables/useToast'
 import {
   ArrowDownTrayIcon,
+  ArrowPathIcon,
   CheckCircleIcon,
   DevicePhoneMobileIcon,
   NoSymbolIcon,
@@ -28,6 +29,7 @@ const toast = useToast()
 const records = ref<MiniProgramQrCode[]>([])
 const loading = ref(true)
 const generating = ref(false)
+const refreshingId = ref<number | null>(null)
 const selected = ref<MiniProgramQrCode | null>(null)
 const allowedDomains = ref<string[]>([])
 const form = reactive({
@@ -165,6 +167,29 @@ async function toggleStatus(record: MiniProgramQrCode) {
     toast.success(record.enabled ? '小程序码已启用' : '小程序码已停用')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '状态更新失败')
+  }
+}
+
+/**
+ * 复用历史记录重新生成最新版本的小程序码。
+ *
+ * @param record 需要刷新二维码的历史记录。
+ * @return 无返回值。
+ */
+async function refreshRecord(record: MiniProgramQrCode) {
+  refreshingId.value = record.id
+  try {
+    const response = await fetch(`/api/mini-program-qrcode/${record.id}/refresh`, {
+      method: 'POST',
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || '刷新失败')
+    records.value.unshift(data)
+    toast.success('已基于最新代码生成新的小程序码')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '刷新失败')
+  } finally {
+    refreshingId.value = null
   }
 }
 
@@ -352,6 +377,14 @@ onBeforeUnmount(() => {
                 <img :src="getImageUrl(record)" :alt="`${record.title} 小程序码`" class="h-full w-full object-contain" />
               </button>
               <div class="flex flex-shrink-0 items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+                <button
+                  class="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  :title="refreshingId === record.id ? '正在重新生成' : '基于最新代码重新生成'"
+                  :disabled="refreshingId !== null"
+                  @click.stop="refreshRecord(record)"
+                >
+                  <ArrowPathIcon class="h-4 w-4" :class="{ 'animate-spin': refreshingId === record.id }" />
+                </button>
                 <button
                   class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                   :title="record.enabled ? '停用' : '启用'"
