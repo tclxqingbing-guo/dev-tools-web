@@ -171,7 +171,7 @@ async function toggleStatus(record: MiniProgramQrCode) {
 }
 
 /**
- * 复用历史记录重新生成最新版本的小程序码。
+ * 在原历史记录上重新生成最新版本的小程序码。
  *
  * @param record 需要刷新二维码的历史记录。
  * @return 无返回值。
@@ -184,8 +184,10 @@ async function refreshRecord(record: MiniProgramQrCode) {
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || '刷新失败')
-    records.value.unshift(data)
-    toast.success('已基于最新代码生成新的小程序码')
+    const index = records.value.findIndex(item => item.id === record.id)
+    if (index >= 0) records.value[index] = data
+    if (selected.value?.id === record.id) selected.value = data
+    toast.success('已在原记录上刷新小程序码')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : '刷新失败')
   } finally {
@@ -379,7 +381,7 @@ onBeforeUnmount(() => {
               <div class="flex flex-shrink-0 items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
                 <button
                   class="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-                  :title="refreshingId === record.id ? '正在重新生成' : '基于最新代码重新生成'"
+                  :title="refreshingId === record.id ? '正在刷新' : '基于最新代码刷新二维码'"
                   :disabled="refreshingId !== null"
                   @click.stop="refreshRecord(record)"
                 >

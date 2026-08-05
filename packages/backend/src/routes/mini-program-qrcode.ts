@@ -354,7 +354,7 @@ miniProgramQrCodeRouter.post('/', async (req, res) => {
  * 基于历史记录重新申请一张小程序码。
  *
  * @param req 包含历史记录编号的请求。
- * @param res 新小程序码记录。
+ * @param res 刷新后的小程序码记录。
  * @return 无返回值。
  */
 miniProgramQrCodeRouter.post('/:id/refresh', async (req, res) => {
@@ -377,36 +377,25 @@ miniProgramQrCodeRouter.post('/:id/refresh', async (req, res) => {
     }
     const source = mapRow(sourceRow)
     const settings = await getSettings(['wechat.qrPage'])
-    let code = ''
-    for (let index = 0; index < 5; index += 1) {
-      const candidate = createShortCode()
-      if (!queryOne(database, 'SELECT id FROM mini_program_qrcodes WHERE code = ?', [candidate])) {
-        code = candidate
-        break
-      }
-    }
-    if (!code) throw new Error('短码生成失败，请重试')
-
     const image = await createUnlimitedQrCode(
-      `q=${code}`,
+      `q=${source.code}`,
       settings['wechat.qrPage'] || 'pages/index/index',
       source.envVersion
     )
     database.run(
-      `INSERT INTO mini_program_qrcodes
-       (code, title, target_url, env_version, enabled, expires_at, image)
-       VALUES (?, ?, ?, ?, 1, ?, ?)`,
-      [code, source.title, source.targetUrl, source.envVersion, source.expiresAt, new Uint8Array(image)]
+      `UPDATE mini_program_qrcodes
+       SET image = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+      [new Uint8Array(image), id]
     )
-    const newId = Number(queryOne(database, 'SELECT last_insert_rowid()', [])?.[0] || 0)
     persist(database)
-    const newRow = queryOne(
+    const refreshedRow = queryOne(
       database,
       `SELECT id, code, title, target_url, env_version, enabled, expires_at, created_at, updated_at
        FROM mini_program_qrcodes WHERE id = ?`,
-      [newId]
+      [id]
     )
-    res.status(201).json(newRow ? mapRow(newRow) : { id: newId, code })
+    res.json(refreshedRow ? mapRow(refreshedRow) : source)
   } catch (error) {
     res.status(400).json({ message: (error as Error).message })
   }
