@@ -165,10 +165,10 @@ export const tools: Tool[] = [
   {
     name: 'Base64 编解码',
     icon: 'ArrowsRightLeftIcon',
-    description: '文本和图片的 Base64 编码/解码工具',
+    description: '文本、图片、MP3/音频、视频、PDF 等文件的 Base64 编解码',
     route: '/tool/base64-tool',
     component: 'Base64Tool',
-    keywords: ['base64', '编码', 'encode', 'decode', '解码'],
+    keywords: ['base64', '编码', 'encode', 'decode', '解码', 'mp3', '图片', '文件'],
     category: '开发工具',
     usageScore: 7,
   },
