@@ -245,6 +245,8 @@ function detectMime(bytes: Uint8Array): string {
   if (bytes.length >= 3 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif'
   if (bytes.length >= 4 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return 'image/webp'
   if (bytes.length >= 3 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) return 'audio/mpeg'
+  // MP3 也可能没有 ID3 标签，而是直接以 MPEG 音频帧开头。
+  if (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0 && (bytes[1]! & 0x06) !== 0) return 'audio/mpeg'
   if (bytes.length >= 4 && bytes[0] === 0x66 && bytes[1] === 0x4c && bytes[2] === 0x61 && bytes[3] === 0x67) return 'audio/flac'
   if (bytes.length >= 4 && bytes[0] === 0x4f && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53) return 'audio/ogg'
   if (bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'application/pdf'
@@ -253,7 +255,42 @@ function detectMime(bytes: Uint8Array): string {
   return ''
 }
 
-async function decodeBase64ToBytes(b64: string): Promise<Uint8Array<ArrayBuffer>> {
+/**
+ * 判断输入是否为十六进制编码的文件内容。
+ *
+ * @param value 待判断的编码字符串。
+ * @return 输入是否只包含完整的十六进制字节。
+ */
+function isHexEncoded(value: string): boolean {
+  return value.length >= 2 && value.length % 2 === 0 && /^[\da-f]+$/i.test(value)
+}
+
+/**
+ * 将十六进制字符串还原为原始文件字节。
+ *
+ * @param hex 十六进制编码的文件内容。
+ * @return 还原后的文件字节。
+ */
+async function decodeHexToBytes(hex: string): Promise<Uint8Array<ArrayBuffer>> {
+  const out = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < hex.length; i += 2) {
+    out[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16)
+    if (i > 0 && i % (1 * 1024 * 1024) === 0) await yieldToUI()
+  }
+  return out
+}
+
+/**
+ * 将 Base64 或十六进制编码的文件内容还原为字节。
+ *
+ * @param encoded 文件编码内容。
+ * @return 还原后的文件字节。
+ */
+async function decodeEncodedFileToBytes(encoded: string): Promise<Uint8Array<ArrayBuffer>> {
+  // 部分音频接口返回的是 Hex（例如以 494433 开头的 MP3），不能直接使用 atob。
+  if (isHexEncoded(encoded)) return decodeHexToBytes(encoded)
+
+  const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
   const pad = b64.length % 4
   const src = pad ? b64 + '='.repeat(4 - pad) : b64
   const CHUNK = 1 * 1024 * 1024
@@ -279,17 +316,43 @@ async function decodeBase64ToBytes(b64: string): Promise<Uint8Array<ArrayBuffer>
   return out
 }
 
+/**
+ * 根据 MIME 类型生成稳定的下载扩展名。
+ *
+ * @param mime 文件 MIME 类型。
+ * @return 文件下载扩展名。
+ */
+function getFileExtension(mime: string): string {
+  const extensions: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/flac': 'flac',
+    'audio/ogg': 'ogg',
+    'video/mp4': 'mp4',
+    'application/pdf': 'pdf',
+    'application/gzip': 'gz',
+  }
+  if (extensions[mime]) return extensions[mime]
+  const subtype = mime.split('/')[1]?.split(';')[0]?.replace(/[^a-z0-9]+/gi, '')
+  return subtype && subtype !== 'octetstream' ? subtype : 'bin'
+}
+
 async function decodeToFile() {
   let b64 = base64Input.value.trim().replace(/\s+/g, '')
   if (!b64) {
-    toast.warning('请粘贴 Base64 字符串')
+    toast.warning('请粘贴 Base64 或十六进制字符串')
     return
   }
   // 支持带 data: 前缀的字符串
+  let declaredMime = ''
   if (b64.startsWith('data:')) {
     const m = b64.match(/^data:([^;]+);base64,/)
     if (m) {
-      resultType.value = m[1] || ''
+      declaredMime = m[1] || ''
       b64 = b64.substring(b64.indexOf(',') + 1)
     }
   }
@@ -299,14 +362,16 @@ async function decodeToFile() {
   resultBlob.value = null
   resultPreview.value = ''
   try {
-    const bytes = await decodeBase64ToBytes(b64)
+    const bytes = await decodeEncodedFileToBytes(b64)
     if (!bytes.length) {
       toast.warning('解码出 0 字节')
       return
     }
-    const mime = resultType.value || detectMime(bytes)
-    resultType.value = mime || 'application/octet-stream'
-    const ext = (resultType.value.split('/')[1] || 'bin').replace('mpeg', 'mp3')
+    // 每次按当前输入重新识别；通用 MIME 不能覆盖真实的 MP3 文件头。
+    const detectedMime = detectMime(bytes)
+    const mime = detectedMime || declaredMime || 'application/octet-stream'
+    resultType.value = mime
+    const ext = getFileExtension(mime)
     resultName.value = `decoded_${Date.now()}.${ext}`
     const blob = new Blob([bytes], { type: resultType.value })
     resultBlob.value = blob
@@ -565,7 +630,7 @@ function resetProgress() {
           <div class="flex items-center justify-between mb-3">
             <h3 class="flex items-center gap-2 font-semibold text-slate-800">
               <ArrowPathIcon class="w-5 h-5 text-accent" />
-              Base64 → 文件
+              Base64 / 十六进制 → 文件
             </h3>
             <div class="flex gap-2">
               <button class="btn-secondary flex items-center gap-1.5 cursor-pointer !py-1.5 !px-3 text-xs" :disabled="isBusy" @click="pasteBase64">
@@ -579,7 +644,7 @@ function resetProgress() {
           </div>
           <textarea
             v-model="base64Input"
-            placeholder="粘贴 Base64 字符串（可带 data: 前缀，自动识别 MP3/图片/视频/PDF 等格式）..."
+            placeholder="粘贴 Base64 或十六进制字符串（可带 data: 前缀，自动识别 MP3/图片/视频/PDF 等格式）..."
             class="glass-input w-full min-h-[220px] p-3 font-mono text-sm resize-none"
           />
 
