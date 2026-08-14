@@ -9,7 +9,8 @@
     "build": "pnpm --filter frontend build && pnpm --filter backend build",
     "build:frontend": "pnpm --filter frontend build",
     "build:backend": "pnpm --filter backend build",
-    "preview": "pnpm --filter frontend preview"
+    "preview": "pnpm --filter frontend preview",
+    "deploy": "docker compose build --no-cache && docker compose up -d"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
