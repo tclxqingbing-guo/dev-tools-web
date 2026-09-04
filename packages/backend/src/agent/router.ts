@@ -187,6 +187,7 @@ agentRouter.post('/conversations/:id/messages/stream', async (req: Authenticated
       for (const line of lines) {
         if (!line.trim()) continue
         const event = JSON.parse(line)
+        if (event.type === 'error') throw new Error(event.message || 'Agent 执行失败')
         if (event.type === 'delta') {
           answer += event.content || ''
           if (!firstTokenSeen) {

@@ -1,6 +1,7 @@
 import json
 from dataclasses import asdict, is_dataclass
 from typing import Any
+from urllib.parse import quote
 
 from pydantic_ai import Agent, AgentRunResultEvent, FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, UsageLimits
 from pydantic_ai.mcp import MCPToolset
@@ -30,7 +31,9 @@ def build_mcp_toolsets(servers: list[dict[str, Any]], user: dict[str, Any]) -> l
     for server in servers:
         headers = {
             'X-BX-User-Id': str(user.get('id') or ''),
-            'X-BX-User-Name': str(user.get('name') or ''),
+            # HTTP 头仅允许 ASCII；中文显示名使用百分号编码传递。
+            'X-BX-User-Name': quote(str(user.get('name') or ''), safe=''),
+            'X-BX-User-Name-Encoding': 'percent',
             'X-BX-User-Roles': ','.join(user.get('roles') or []),
         }
         if server.get('token'):
