@@ -79,16 +79,28 @@ export function resolveUser(req: AuthenticatedRequest): AgentUser | null {
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
   const user = resolveUser(req)
-  if (!user && authenticationEnabled()) {
-    res.status(401).json({ detail: '未登录或登录已过期', login_url: '/api/auth/sso/login' })
+  if (!user) {
+    if (authenticationEnabled()) {
+      res.status(401).json({ detail: '未登录或登录已过期', login_url: '/api/auth/sso/login' })
+      return
+    }
+    if (!envBool('AGENT_ALLOW_GUEST')) {
+      res.status(503).json({ detail: '统一 Agent 尚未配置登录服务' })
+      return
+    }
+    const guest = { id: `guest-${randomBytes(12).toString('hex')}`, name: '访客', roles: ['guest'], admin: false }
+    writeSession(res, { user: { userId: guest.id, username: guest.name, roles: guest.roles } })
+    req.agentUser = guest
+    next()
     return
   }
-  req.agentUser = user || { id: 'anonymous', name: '匿名用户', roles: [], admin: !authenticationEnabled() }
+  req.agentUser = user
   next()
 }
 
 export function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
   requireAuth(req, res, () => {
+    if (req.agentUser?.roles.includes('guest')) return void res.status(403).json({ detail: '访客不能访问系统设置' })
     if (req.agentUser?.admin) return next()
     void hasAuthorityAdminRole(req.agentUser!).then((allowed) => {
       if (!allowed) return void res.status(403).json({ detail: '需要管理员权限' })
