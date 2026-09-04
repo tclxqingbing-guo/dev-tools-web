@@ -161,7 +161,7 @@ async def run_stream(body: dict[str, Any], emit) -> str:
             elif isinstance(event, AgentRunResultEvent):
                 value = getattr(event.result, 'output', None)
                 final = value if isinstance(value, str) else ''.join(pending)
-                usage = event.result.usage()
+                usage = event.result.usage
                 usage_value = asdict(usage) if is_dataclass(usage) else {}
                 await emit({'type': 'context_usage', 'runId': body['runId'], 'usage': usage_value})
                 if final:
