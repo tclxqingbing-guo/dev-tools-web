@@ -28,6 +28,12 @@ import { mockRouter } from './routes/mock.js'
 import { settingsRouter } from './routes/settings.js'
 import { miniProgramQrCodeRouter } from './routes/mini-program-qrcode.js'
 import { miniProgramProxyRouter } from './routes/mini-program-proxy.js'
+import { agentAuthRouter } from './agent/auth-router.js'
+import { agentAdminRouter, agentRouter } from './agent/router.js'
+import { initAgentDb } from './agent/db.js'
+import { codeGraphAdminRouter, codeGraphMcpRouter } from './codegraph/router.js'
+import { seedMcpServers, startAttachmentCleanup, startMcpHealthChecks } from './agent/bootstrap.js'
+import { agentOpenRouter } from './agent/open-router.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
@@ -50,7 +56,21 @@ app.use('/api/tts', ttsRouter)
 app.use('/api/mock', mockRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/mini-program-qrcode', miniProgramQrCodeRouter)
+app.use('/api/auth', agentAuthRouter)
+app.use('/api/agent', agentRouter)
+app.use('/api/open/agent/v1', agentOpenRouter)
+app.use('/api/admin', agentAdminRouter)
+app.use('/api/admin/codegraph', codeGraphAdminRouter)
+app.use('/api/mcp/codegraph', codeGraphMcpRouter)
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`)
-})
+initAgentDb()
+  .then(seedMcpServers)
+  .then(() => app.listen(PORT, () => {
+    startMcpHealthChecks()
+    startAttachmentCleanup()
+    console.log(`Backend running on http://localhost:${PORT}`)
+  }))
+  .catch((error) => {
+    console.error(`Agent database initialization failed: ${(error as Error).message}`)
+    process.exitCode = 1
+  })

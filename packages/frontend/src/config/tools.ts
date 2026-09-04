@@ -23,14 +23,14 @@ export const categoryIcons: Record<Category, string> = {
 
 export const tools: Tool[] = [
   {
-    name: 'AI 助手',
+    name: '统一 AI Agent',
     icon: 'CpuChipIcon',
-    description: 'AI 对话聊天 & 图片生成',
+    description: '联网、知识库、监控、Code Graph、文档与隔离脚本执行',
     route: '/tool/ai-assistants',
-    component: 'AiAssistants',
-    keywords: ['ai', '对话', '聊天', 'chat', '图片', '生成', 'image'],
+    component: 'AgentWorkspace',
+    keywords: ['agent', 'mcp', '知识库', '监控', 'code graph', '联网', '文档'],
     category: 'AI 工具',
-    usageScore: 50,
+    usageScore: 100,
   },
   {
     name: 'JSON 格式化',

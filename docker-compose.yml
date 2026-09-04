@@ -1,4 +1,98 @@
 services:
+  postgres:
+    image: harbor.17usoft.com/bx/base/postgres:16-alpine
+    container_name: devtools-agent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${AGENT_POSTGRES_USER:-bx}
+      POSTGRES_PASSWORD: ${AGENT_POSTGRES_PASSWORD:-bx_pass}
+      POSTGRES_DB: ${AGENT_POSTGRES_DB:-bx_agent}
+    volumes:
+      - ${DATA_DIR:-/opt/data/dev_tools}/postgres:/var/lib/postgresql/data
+    networks: [devtools]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AGENT_POSTGRES_USER:-bx} -d ${AGENT_POSTGRES_DB:-bx_agent}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  codegraph-neo4j:
+    image: harbor.17usoft.com/bx/base/neo4j:5-community
+    container_name: devtools-codegraph-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${CODEGRAPH_NEO4J_PASSWORD:-bx_codegraph_pass}
+    volumes:
+      - ${DATA_DIR:-/opt/data/dev_tools}/codegraph-neo4j:/data
+    networks: [devtools]
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u neo4j -p ${CODEGRAPH_NEO4J_PASSWORD:-bx_codegraph_pass} 'RETURN 1' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  searxng:
+    image: harbor.17usoft.com/bx/base/searxng:latest
+    container_name: devtools-searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+    networks: [devtools]
+
+  sandbox-engine:
+    image: harbor.17usoft.com/bx/base/docker:27-dind-rootless
+    container_name: devtools-sandbox-engine
+    restart: unless-stopped
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ''
+    command: ["--host=tcp://0.0.0.0:2375", "--tls=false"]
+    volumes:
+      - sandbox-docker-data:/var/lib/docker
+    networks: [devtools]
+
+  sandbox-bootstrap:
+    image: harbor.17usoft.com/bx/base/docker:27-cli
+    restart: "no"
+    depends_on:
+      sandbox-engine:
+        condition: service_started
+    environment:
+      DOCKER_HOST: tcp://sandbox-engine:2375
+    volumes:
+      - ./:/source:ro
+    command: ["sh", "-lc", "until docker info >/dev/null 2>&1; do sleep 1; done; docker build -t bx-agent-sandbox:latest -f /source/docker/sandbox.Dockerfile /source"]
+    networks: [devtools]
+
+  agent-service:
+    build:
+      context: apps/agent-service
+      dockerfile: Dockerfile
+    container_name: devtools-agent-service
+    restart: unless-stopped
+    depends_on:
+      sandbox-bootstrap:
+        condition: service_completed_successfully
+      searxng:
+        condition: service_started
+    environment:
+      DOCKER_HOST: tcp://sandbox-engine:2375
+      SANDBOX_IMAGE: bx-agent-sandbox:latest
+      AGENT_CONTEXT_WINDOW: ${AGENT_CONTEXT_WINDOW:-128000}
+      AGENTIC_MAX_ROUNDS: ${AGENTIC_MAX_ROUNDS:-30}
+      AGENTIC_MAX_DURATION_SECONDS: ${AGENTIC_MAX_DURATION_SECONDS:-600}
+      NO_PROXY: '*'
+      HTTP_PROXY: ''
+      HTTPS_PROXY: ''
+    volumes:
+      - ${DATA_DIR:-/opt/data/dev_tools}:/app/data
+    networks: [devtools]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   backend:
     build:
       context: .
@@ -6,15 +100,34 @@ services:
       target: backend-runtime
     container_name: devtools-backend
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      agent-service:
+        condition: service_healthy
+      codegraph-neo4j:
+        condition: service_healthy
     # 仅保留服务启动所需的基础设施配置；业务配置统一在设置中心维护。
     env_file:
       - .env
     environment:
       - BACKEND_PORT=3001
+      - AGENT_DATABASE_URL=postgresql://${AGENT_POSTGRES_USER:-bx}:${AGENT_POSTGRES_PASSWORD:-bx_pass}@postgres:5432/${AGENT_POSTGRES_DB:-bx_agent}
+      - AGENT_SERVICE_URL=http://agent-service:8200
+      - AGENT_DATA_DIR=/app/data/agent
+      - CODEGRAPH_NEO4J_URI=bolt://codegraph-neo4j:7687
+      - CODEGRAPH_NEO4J_PASSWORD=${CODEGRAPH_NEO4J_PASSWORD:-bx_codegraph_pass}
+      - CODEGRAPH_REPO_CACHE_DIR=/app/data/code-repos
+      - CODEGRAPH_MCP_TOKEN=${CODEGRAPH_MCP_TOKEN:-}
+      - KNOWLEDGE_MCP_URL=${KNOWLEDGE_MCP_URL:-}
+      - KNOWLEDGE_MCP_TOKEN=${KNOWLEDGE_MCP_TOKEN:-}
+      - MONITOR_MCP_URL=${MONITOR_MCP_URL:-}
+      - MONITOR_MCP_TOKEN=${MONITOR_MCP_TOKEN:-}
     volumes:
-      - /opt/data/dev_tools:/app/data
+      - ${DATA_DIR:-/opt/data/dev_tools}:/app/data
     networks:
       - devtools
+      - agent-shared
 
   frontend:
     build:
@@ -32,7 +145,11 @@ services:
 
 volumes:
   backend-data:
+  sandbox-docker-data:
 
 networks:
   devtools:
     driver: bridge
+  agent-shared:
+    external: true
+    name: bx-agent-shared
