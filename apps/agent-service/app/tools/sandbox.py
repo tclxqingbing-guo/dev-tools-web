@@ -35,7 +35,11 @@ async def execute(reason: str, command: str, config: dict[str, Any], input_files
                         if os.path.isfile(raw):
                             tar.add(raw, arcname=f'input/{os.path.basename(raw)}', recursive=False)
                 container.put_archive('/workspace', archive.getvalue())
-            result = container.exec_run(['/usr/bin/timeout', f'{timeout}s', '/bin/sh', '-lc', command], demux=False)
+            shell_command = f'ulimit -v {memory * 1024}; ulimit -u {pids}; exec /bin/bash -lc "$BX_SANDBOX_COMMAND"'
+            result = container.exec_run(
+                ['/usr/bin/timeout', f'{timeout}s', '/bin/bash', '-lc', shell_command],
+                environment={'BX_SANDBOX_COMMAND': command}, demux=False,
+            )
             logs = result.output or b''
             text = logs[:output_limit].decode('utf-8', errors='replace')
             if len(logs) > output_limit:

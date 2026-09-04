@@ -94,7 +94,7 @@ agentOpenRouter.post('/chat/completions', async (req, res) => {
       res.write(`data: ${JSON.stringify({ id: runId, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage })}\n\n`)
       res.write('data: [DONE]\n\n'); return void res.end()
     }
-    res.json({ id: runId, object: 'chat.completion', model: settings['model.name'] || 'bx-agent', choices: [{ index: 0, message: { role: 'assistant', content: answer }, finish_reason: 'stop' }], usage })
+    res.json({ id: runId, object: 'chat.completion', model: settings['model.name'] || process.env.AGENT_MODEL || 'bx-agent', choices: [{ index: 0, message: { role: 'assistant', content: answer }, finish_reason: 'stop' }], usage })
   } catch (error) {
     if (res.headersSent) { res.write(`data: ${JSON.stringify({ error: { message: (error as Error).message, type: 'agent_error' } })}\n\n`); return void res.end() }
     res.status(502).json({ error: { message: (error as Error).message, type: 'agent_error' } })

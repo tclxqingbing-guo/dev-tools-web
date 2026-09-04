@@ -3,7 +3,7 @@ name = "bx-tools-agent-service"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-  "pydantic-ai==2.37.0",
+  "pydantic-ai-slim[mcp,openai]==2.37.0",
   "fastapi==0.141.1",
   "uvicorn[standard]>=0.35",
   "httpx>=0.28",
