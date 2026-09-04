@@ -1,3 +1,6 @@
+import asyncio
+import ipaddress
+import socket
 from typing import Any
 from urllib.parse import urlparse
 
@@ -47,7 +50,11 @@ async def search_web(reason: str, query: str, config: dict[str, Any], max_result
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                 if provider == 'searxng':
                     base = _http_url(str(config.get('search.searxngUrl') or 'http://searxng:8080'))
-                    response = await client.get(f'{base.rstrip("/")}/search', params={'q': query, 'format': 'json'})
+                    engines = str(config.get('search.searxngEngines') or 'sogou').strip()
+                    params = {'q': query, 'format': 'json'}
+                    if engines:
+                        params['engines'] = engines
+                    response = await client.get(f'{base.rstrip("/")}/search', params=params)
                     response.raise_for_status()
                     rows = response.json().get('results', [])[:limit]
                     result = [{'title': r.get('title'), 'url': r.get('url'), 'snippet': r.get('content'), 'publishedAt': r.get('publishedDate'), 'source': 'searxng'} for r in rows]
@@ -92,6 +99,3 @@ async def read_web_page(reason: str, url: str, config: dict[str, Any]) -> str:
         for node in soup(['script', 'style', 'nav', 'footer']):
             node.decompose()
         return ' '.join(soup.get_text('\n').split())[:50000]
-import asyncio
-import ipaddress
-import socket

@@ -23,7 +23,8 @@ async def execute(reason: str, command: str, config: dict[str, Any], input_files
             ['/bin/sh', '-lc', 'while true; do sleep 3600; done'], user='1000:1000', working_dir='/workspace',
             network_disabled=True, read_only=True, mem_limit=f'{memory}m', pids_limit=pids,
             nano_cpus=int(float(config.get('sandbox.cpus') or 1) * 1_000_000_000),
-            cap_drop=['ALL'], security_opt=['no-new-privileges'], tmpfs={'/workspace': f'rw,size={min(memory, 512)}m', '/tmp': 'rw,size=64m'},
+            cap_drop=['ALL'], security_opt=['no-new-privileges'],
+            tmpfs={'/workspace': f'rw,size={min(memory, 512)}m,mode=1777', '/tmp': 'rw,size=64m,mode=1777'},
             labels={'bx.agent.sandbox': 'true'},
         )
         try:
