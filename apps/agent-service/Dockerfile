@@ -11,8 +11,9 @@ RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.li
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-COPY app ./app
+COPY app/__init__.py ./app/__init__.py
 RUN pip install --no-cache-dir .
+COPY app ./app
 
 EXPOSE 8200
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
