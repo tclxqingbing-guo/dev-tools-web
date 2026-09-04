@@ -50,7 +50,7 @@ async def search_web(reason: str, query: str, config: dict[str, Any], max_result
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                 if provider == 'searxng':
                     base = _http_url(str(config.get('search.searxngUrl') or 'http://searxng:8080'))
-                    engines = str(config.get('search.searxngEngines') or 'sogou').strip()
+                    engines = str(config.get('search.searxngEngines') or '360search,mwmbl,sogou').strip()
                     params = {'q': query, 'format': 'json'}
                     if engines:
                         params['engines'] = engines

@@ -9,7 +9,7 @@ const loading = ref(false)
 const message = ref('')
 const settings = reactive<Record<string, any>>({
   'model.name': '', 'search.primary': 'searxng', 'search.fallback': 'tavily',
-  'search.searxngUrl': 'http://searxng:8080', 'search.searxngEngines': 'sogou', 'search.tavilyKey': '', 'search.maxResults': 8,
+  'search.searxngUrl': 'http://searxng:8080', 'search.searxngEngines': '360search,mwmbl,sogou', 'search.tavilyKey': '', 'search.maxResults': 8,
   'search.allowedDomains': '', 'search.blockedDomains': '',
   'external.apiToken': '', 'external.allowedModes': 'auto,general,knowledge,agent',
   'search.timeoutSeconds': 15, 'agent.maxRounds': 30, 'agent.maxDurationSeconds': 600,

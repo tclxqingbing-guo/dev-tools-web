@@ -47,9 +47,9 @@ async def execute(reason: str, command: str, config: dict[str, Any], input_files
                 text += '\n[输出已截断]'
             artifacts: list[dict[str, Any]] = []
             if artifact_dir:
-                try:
-                    stream, _stat = container.get_archive('/workspace/output')
-                    archive_bytes = b''.join(stream)
+                archive_result = container.exec_run(['tar', '-C', '/workspace', '-cf', '-', 'output'])
+                if archive_result.exit_code == 0:
+                    archive_bytes = archive_result.output or b''
                     if len(archive_bytes) > output_limit * 5:
                         raise ValueError('生成文件总大小超过限制')
                     os.makedirs(artifact_dir, exist_ok=True)
@@ -68,8 +68,6 @@ async def execute(reason: str, command: str, config: dict[str, Any], input_files
                             with open(target, 'wb') as output:
                                 output.write(data)
                             artifacts.append({'filename': filename, 'storagePath': target, 'mimeType': mimetypes.guess_type(filename)[0] or 'application/octet-stream', 'sizeBytes': len(data)})
-                except docker.errors.NotFound:
-                    pass
             return {'exitCode': result.exit_code, 'output': text, 'artifacts': artifacts}
         finally:
             container.remove(force=True)
