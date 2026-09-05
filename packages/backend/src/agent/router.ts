@@ -39,7 +39,7 @@ function parseLimit(value: unknown, fallback = 30, max = 100): number {
 function sendSse(res: Response, event: unknown): void { res.write(`data: ${JSON.stringify(event)}\n\n`) }
 
 agentRouter.get('/capabilities', async (req: AuthenticatedRequest, res) => {
-  const servers = await query<any>(`SELECT name,title,status,latency_ms,"tools" FROM agent_mcp_server WHERE enabled=true ORDER BY name`)
+  const servers = await query<any>(`SELECT name,title,status,latency_ms,last_error AS "lastError","tools" FROM agent_mcp_server WHERE enabled=true ORDER BY name`)
   res.json({
     user: user(req), modes: [...modes], streamEvents: [
       'message_started', 'progress', 'tool_started', 'tool_finished', 'tool_failed', 'source',
