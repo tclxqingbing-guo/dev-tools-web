@@ -7,6 +7,7 @@ const router = useRouter()
 const tab = ref<'runtime' | 'mcp' | 'codegraph'>('runtime')
 const loading = ref(false)
 const message = ref('')
+const accessDenied = ref(false)
 const settings = reactive<Record<string, any>>({
   'model.name': '', 'model.temperature': 0.3, 'model.maxTokens': 4096, 'search.primary': 'searxng', 'search.fallback': 'tavily',
   'search.searxngUrl': 'http://searxng:8080', 'search.searxngEngines': '360search,mwmbl,sogou', 'search.tavilyKey': '', 'search.maxResults': 8,
@@ -29,13 +30,13 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 async function load() {
-  loading.value = true
+  loading.value = true; accessDenied.value = false
   try {
     const [configured, mcp, repos, metricSummary] = await Promise.all([
       request<Record<string, any>>('/api/admin/agent/settings'), request<any[]>('/api/admin/mcp/servers'), request<any[]>('/api/admin/codegraph/repositories'), request<any>('/api/admin/agent/metrics'),
     ])
     Object.assign(settings, configured); servers.value = mcp; repositories.value = repos; metrics.value = metricSummary
-  } catch (error) { message.value = (error as Error).message }
+  } catch (error) { message.value = (error as Error).message; accessDenied.value = message.value.includes('权限') }
   finally { loading.value = false }
 }
 
@@ -76,7 +77,8 @@ onMounted(load)
       <div class="mb-6 flex gap-1 rounded-xl bg-stone-200/70 p-1">
         <button v-for="item in [{k:'runtime',n:'运行参数'},{k:'mcp',n:'MCP 服务'},{k:'codegraph',n:'Code Graph'}]" :key="item.k" :class="['flex-1 rounded-lg px-4 py-2 text-sm', tab===item.k ? 'bg-white font-medium shadow-sm' : 'text-stone-500']" @click="tab=item.k as any">{{ item.n }}</button>
       </div>
-      <p v-if="message" class="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ message }}</p>
+      <p v-if="message" :class="['mb-4 rounded-xl px-4 py-3 text-sm', accessDenied ? 'bg-[#fbf7ef] text-[#8b6d3f]' : 'bg-emerald-50 text-emerald-800']">{{ message }}</p>
+      <p v-if="accessDenied" class="mb-4 rounded-xl border border-[#e9dfcf] bg-[#fbf7ef] px-4 py-3 text-sm text-[#8b6d3f]">当前账号没有管理员权限，配置内容仅供查看；请使用管理员账号登录后再保存。</p>
 
       <section v-if="tab==='runtime'" class="grid gap-5 md:grid-cols-2">
         <div class="grid grid-cols-3 gap-3 md:col-span-2">

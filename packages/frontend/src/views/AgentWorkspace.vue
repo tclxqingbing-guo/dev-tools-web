@@ -135,18 +135,18 @@ onMounted(async () => {
           </div>
         </div>
         <button class="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#7b837d] hover:bg-white/70 hover:text-[#2f3437]" @click="mcpOpen = true"><ServerStackIcon class="h-4 w-4" />MCP 能力状态<span class="ml-auto h-2 w-2 rounded-full bg-[#7fa084]" /></button>
-        <button v-if="capabilities.user?.admin" class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#7b837d] hover:bg-white/70 hover:text-[#2f3437]" @click="router.push('/agent/settings')"><Cog6ToothIcon class="h-4 w-4" />系统设置</button>
+        <button class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-[#7b837d] hover:bg-white/70 hover:text-[#2f3437]" title="管理员可编辑 Agent、MCP、Code Graph 和沙盒参数" @click="router.push('/agent/settings')"><Cog6ToothIcon class="h-4 w-4" />系统设置<span v-if="!capabilities.user?.admin" class="ml-auto text-[10px] text-[#a3aaa4]">只读</span></button>
       </aside>
 
-      <main class="relative flex min-w-0 flex-col">
+      <main class="relative flex h-full min-h-0 min-w-0 flex-col">
         <header class="flex h-16 shrink-0 items-center justify-between border-b border-stone-300/70 px-6">
           <div class="min-w-0"><h1 class="truncate font-serif text-lg">{{ activeConversation?.title || '新的分析任务' }}</h1><p class="text-[11px] text-[#8a918c]">回答、检索、执行，所有证据汇集在一个会话</p></div>
-          <div class="flex rounded-xl bg-stone-200/70 p-1">
+          <div class="flex items-center gap-2"><button class="rounded-lg p-2 text-[#7b837d] hover:bg-white hover:text-[#2f3437]" title="系统设置（管理员可编辑）" @click="router.push('/agent/settings')"><Cog6ToothIcon class="h-4 w-4" /></button><div class="flex rounded-xl bg-stone-200/70 p-1">
             <button v-for="item in modeOptions" :key="item.value" :title="item.tip" :class="['flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition', mode === item.value ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800']" @click="changeMode(item.value)"><component :is="item.icon" class="h-3.5 w-3.5" />{{ item.label }}</button>
-          </div>
+          </div></div>
         </header>
 
-        <section ref="scrollEl" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-8">
+        <section ref="scrollEl" class="min-h-0 h-0 flex-1 overflow-y-scroll overscroll-contain px-6 py-8 [scrollbar-gutter:stable]">
           <div class="mx-auto max-w-3xl space-y-7">
             <div v-if="!messages.length" class="py-[12vh] text-center">
               <div class="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-[26px] bg-[#e7eee8] text-[#66836d] shadow-sm"><CpuChipIcon class="h-9 w-9" /></div>

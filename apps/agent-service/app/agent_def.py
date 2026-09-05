@@ -158,7 +158,9 @@ async def run_stream(body: dict[str, Any], emit) -> str:
                 await emit({'type': 'tool_started', 'runId': body['runId'], 'toolCallId': event.part.tool_call_id, 'toolName': event.part.tool_name, 'round': round_no, 'summary': (args or {}).get('reason') or '调用工具'})
             elif isinstance(event, FunctionToolResultEvent):
                 failed = isinstance(event.part, RetryPromptPart)
-                await emit({'type': 'tool_failed' if failed else 'tool_finished', 'runId': body['runId'], 'toolCallId': event.part.tool_call_id, 'toolName': event.part.tool_name, 'round': round_no, 'summary': str(event.part.content)[:300] if failed else '工具调用完成'})
+                # 工具结果提供给前端活动面板，截断长度避免大结果阻塞 SSE；完整数据仍由模型继续消费。
+                output = str(event.part.content or '')[:5000]
+                await emit({'type': 'tool_failed' if failed else 'tool_finished', 'runId': body['runId'], 'toolCallId': event.part.tool_call_id, 'toolName': event.part.tool_name, 'round': round_no, 'summary': output[:300] if failed else '工具调用完成', 'output': output})
             elif isinstance(event, PartDeltaEvent):
                 value = getattr(event.delta, 'content_delta', None)
                 # pydantic-ai 会在这里逐段返回正文；立即转成 SSE，前端才能实时绘制。
