@@ -138,7 +138,7 @@ async def run_stream(body: dict[str, Any], emit) -> str:
     )
     prompt = body['question'] + (f'\n\n唯一一次知识库检索结果：\n{knowledge_context}' if knowledge_context else '')
     answer: list[str] = []
-    pending: list[str] = []
+    streamed_text = ''
     round_no = 0
     async with agent.run_stream_events(
         prompt,
@@ -160,15 +160,19 @@ async def run_stream(body: dict[str, Any], emit) -> str:
                 await emit({'type': 'tool_failed' if failed else 'tool_finished', 'runId': body['runId'], 'toolCallId': event.part.tool_call_id, 'toolName': event.part.tool_name, 'round': round_no, 'summary': str(event.part.content)[:300] if failed else '工具调用完成'})
             elif isinstance(event, PartDeltaEvent):
                 value = getattr(event.delta, 'content_delta', None)
-                if isinstance(value, str): pending.append(value)
+                # pydantic-ai 会在这里逐段返回正文；立即转成 SSE，前端才能实时绘制。
+                if isinstance(value, str) and value:
+                    streamed_text += value
+                    answer.append(value)
+                    await emit({'type': 'delta', 'runId': body['runId'], 'content': value})
             elif isinstance(event, AgentRunResultEvent):
                 value = getattr(event.result, 'output', None)
-                final = value if isinstance(value, str) else ''.join(pending)
+                final = value if isinstance(value, str) else ''
                 usage = event.result.usage
                 usage_value = asdict(usage) if is_dataclass(usage) else {}
                 await emit({'type': 'context_usage', 'runId': body['runId'], 'usage': usage_value})
-                if final:
+                # 某些模型没有 PartDeltaEvent，只在结果事件提供完整正文；仅在未流出正文时兜底。
+                if final and not streamed_text:
                     answer.append(final)
                     await emit({'type': 'delta', 'runId': body['runId'], 'content': final})
-                pending.clear()
     return ''.join(answer)

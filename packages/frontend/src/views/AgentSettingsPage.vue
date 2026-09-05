@@ -8,7 +8,7 @@ const tab = ref<'runtime' | 'mcp' | 'codegraph'>('runtime')
 const loading = ref(false)
 const message = ref('')
 const settings = reactive<Record<string, any>>({
-  'model.name': '', 'search.primary': 'searxng', 'search.fallback': 'tavily',
+  'model.name': '', 'model.temperature': 0.3, 'model.maxTokens': 4096, 'search.primary': 'searxng', 'search.fallback': 'tavily',
   'search.searxngUrl': 'http://searxng:8080', 'search.searxngEngines': '360search,mwmbl,sogou', 'search.tavilyKey': '', 'search.maxResults': 8,
   'search.allowedDomains': '', 'search.blockedDomains': '',
   'external.apiToken': '', 'external.allowedModes': 'auto,general,knowledge,agent',
@@ -84,6 +84,7 @@ onMounted(load)
         </div>
         <div class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-5 font-serif text-xl">模型与搜索</h2><div class="space-y-4">
           <label class="block text-xs text-stone-500">Agent 模型<input v-model="settings['model.name']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-600/20" placeholder="例如 gpt-5.4" /></label>
+          <div class="grid grid-cols-2 gap-3"><label class="text-xs text-stone-500">温度<input v-model.number="settings['model.temperature']" min="0" max="2" step="0.1" type="number" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" /></label><label class="text-xs text-stone-500">最大输出 Token<input v-model.number="settings['model.maxTokens']" min="256" max="32768" step="256" type="number" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" /></label></div>
           <div class="grid grid-cols-2 gap-3"><label class="text-xs text-stone-500">主搜索<select v-model="settings['search.primary']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm"><option>searxng</option><option>tavily</option></select></label><label class="text-xs text-stone-500">备用搜索<select v-model="settings['search.fallback']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm"><option>tavily</option><option>searxng</option><option>none</option></select></label></div>
           <label class="block text-xs text-stone-500">SearXNG 地址<input v-model="settings['search.searxngUrl']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" /></label>
           <label class="block text-xs text-stone-500">SearXNG 引擎<input v-model="settings['search.searxngEngines']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="sogou,bing" /></label>
@@ -92,7 +93,7 @@ onMounted(load)
           <div class="grid grid-cols-2 gap-3"><label class="text-xs text-stone-500">域名白名单<input v-model="settings['search.allowedDomains']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="留空不限制" /></label><label class="text-xs text-stone-500">域名黑名单<input v-model="settings['search.blockedDomains']" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="逗号分隔" /></label></div>
         </div></div>
         <div class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-5 font-serif text-xl">预算与沙盒</h2><div class="grid grid-cols-2 gap-4">
-          <label v-for="field in [{k:'agent.maxRounds',n:'最大轮次'},{k:'agent.maxDurationSeconds',n:'Agent 秒数'},{k:'sandbox.timeoutSeconds',n:'脚本秒数'},{k:'sandbox.memoryMb',n:'内存 MB'},{k:'sandbox.cpus',n:'CPU'},{k:'sandbox.pids',n:'PID'}]" :key="field.k" class="text-xs text-stone-500">{{ field.n }}<input v-model.number="settings[field.k]" type="number" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" /></label>
+          <label v-for="field in [{k:'agent.maxRounds',n:'最大轮次'},{k:'agent.maxDurationSeconds',n:'Agent 秒数'},{k:'agent.contextWindow',n:'上下文 Token'},{k:'search.timeoutSeconds',n:'搜索秒数'},{k:'sandbox.timeoutSeconds',n:'脚本秒数'},{k:'sandbox.memoryMb',n:'内存 MB'},{k:'sandbox.cpus',n:'CPU'},{k:'sandbox.pids',n:'PID'},{k:'sandbox.outputMb',n:'输出 MB'}]" :key="field.k" class="text-xs text-stone-500">{{ field.n }}<input v-model.number="settings[field.k]" type="number" class="mt-1.5 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm" /></label>
         </div><p class="mt-5 text-xs leading-5 text-stone-400">沙盒默认禁网、非特权、只读根文件系统。这里仅能在后端安全上限内调整。</p></div>
       </section>
 

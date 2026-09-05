@@ -309,7 +309,7 @@ agentAdminRouter.get('/agent/metrics', async (_req, res) => {
 })
 
 agentAdminRouter.put('/agent/settings', async (req: AuthenticatedRequest, res) => {
-  const allowed = new Set(['model.name','search.primary','search.fallback','search.searxngUrl','search.searxngEngines','search.tavilyKey','search.maxResults','search.timeoutSeconds','search.allowedDomains','search.blockedDomains','external.apiToken','external.allowedModes','agent.maxRounds','agent.maxDurationSeconds','agent.contextWindow','sandbox.timeoutSeconds','sandbox.memoryMb','sandbox.cpus','sandbox.pids','sandbox.outputMb','codegraph.gitlabUrl','codegraph.gitlabToken','codegraph.projects','codegraph.branch'])
+  const allowed = new Set(['model.name','model.temperature','model.maxTokens','search.primary','search.fallback','search.searxngUrl','search.searxngEngines','search.tavilyKey','search.maxResults','search.timeoutSeconds','search.allowedDomains','search.blockedDomains','external.apiToken','external.allowedModes','agent.maxRounds','agent.maxDurationSeconds','agent.contextWindow','sandbox.timeoutSeconds','sandbox.memoryMb','sandbox.cpus','sandbox.pids','sandbox.outputMb','codegraph.gitlabUrl','codegraph.gitlabToken','codegraph.projects','codegraph.branch'])
   for (const [key, value] of Object.entries(req.body?.values || {})) {
     if (!allowed.has(key)) continue
     if ((key.endsWith('Key') || key.endsWith('Token')) && !value) continue
