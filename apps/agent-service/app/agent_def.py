@@ -60,6 +60,7 @@ def system_instructions(mode: str, attachments: list[dict[str, Any]]) -> str:
 - 涉及知识库、监控或代码实现时主动调用对应 MCP 工具，不可根据名称猜测。
 - terminal 命令只能使用 sandbox_execute；不得声称访问宿主机。
 - 每次工具调用的 reason 只写一句可安全展示的中文目的，不输出隐藏思维链。
+- 调用工具前不要输出面向用户的正文；工具返回后再组织最终答案。
 - 工具不可用时明确说明证据边界，禁止编造结果。
 会话附件：
 {files}
@@ -161,7 +162,7 @@ async def run_stream(body: dict[str, Any], emit) -> str:
             elif isinstance(event, PartDeltaEvent):
                 value = getattr(event.delta, 'content_delta', None)
                 # pydantic-ai 会在这里逐段返回正文；立即转成 SSE，前端才能实时绘制。
-                if isinstance(value, str) and value:
+                if getattr(event.delta, 'part_delta_kind', None) == 'text' and isinstance(value, str) and value:
                     streamed_text += value
                     answer.append(value)
                     await emit({'type': 'delta', 'runId': body['runId'], 'content': value})
