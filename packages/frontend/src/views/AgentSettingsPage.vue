@@ -23,9 +23,21 @@ const repositories = ref<any[]>([])
 const metrics = ref<any>({})
 const newServer = reactive({ name: '', title: '', url: '', token: '', purpose: '', toolAllowlistText: '' })
 
+interface RequestError extends Error { status?: number }
+
+/** 判断请求是否因当前账号权限不足而失败。 */
+function isPermissionError(error: unknown): boolean {
+  const requestError = error as RequestError
+  return Number(requestError?.status) === 401 || Number(requestError?.status) === 403 || requestError?.message?.includes('权限') || requestError?.message?.includes('访客')
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: 'include', ...options, headers: options?.body ? { 'Content-Type': 'application/json' } : undefined })
-  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || `请求失败：${response.status}`)
+  if (!response.ok) {
+    const error = new Error((await response.json().catch(() => ({}))).detail || `请求失败：${response.status}`) as RequestError
+    error.status = response.status
+    throw error
+  }
   return response.status === 204 ? undefined as T : response.json()
 }
 
@@ -36,13 +48,15 @@ async function load() {
       request<Record<string, any>>('/api/admin/agent/settings'), request<any[]>('/api/admin/mcp/servers'), request<any[]>('/api/admin/codegraph/repositories'), request<any>('/api/admin/agent/metrics'),
     ])
     Object.assign(settings, configured); servers.value = mcp; repositories.value = repos; metrics.value = metricSummary
-  } catch (error) { message.value = (error as Error).message; accessDenied.value = message.value.includes('权限') }
+  } catch (error) { message.value = (error as Error).message; accessDenied.value = isPermissionError(error) }
   finally { loading.value = false }
 }
 
 async function saveSettings() {
-  await request('/api/admin/agent/settings', { method: 'PUT', body: JSON.stringify({ values: settings }) })
-  settings['search.tavilyKey'] = ''; settings['codegraph.gitlabToken'] = ''; message.value = '配置已保存'
+  try {
+    await request('/api/admin/agent/settings', { method: 'PUT', body: JSON.stringify({ values: settings }) })
+    settings['search.tavilyKey'] = ''; settings['codegraph.gitlabToken'] = ''; message.value = '配置已保存'
+  } catch (error) { message.value = (error as Error).message; if (isPermissionError(error)) accessDenied.value = true }
 }
 
 async function addServer() {
@@ -61,7 +75,11 @@ function changeAllowlist(server: any, event: Event) {
   void updateServer(server)
 }
 async function removeServer(id: string) { if (confirm('删除该 MCP 配置？')) { await request(`/api/admin/mcp/servers/${id}`, { method: 'DELETE' }); await load() } }
-async function syncCodeGraph(projectId?: string) { await saveSettings(); await request('/api/admin/codegraph/sync', { method: 'POST', body: JSON.stringify(projectId ? { projectId } : {}) }); message.value = '已触发 Code Graph 同步'; setTimeout(load, 1200) }
+async function syncCodeGraph(projectId?: string) {
+  if (accessDenied.value) return
+  try { await saveSettings(); await request('/api/admin/codegraph/sync', { method: 'POST', body: JSON.stringify(projectId ? { projectId } : {}) }); message.value = '已触发 Code Graph 同步'; setTimeout(load, 1200) }
+  catch (error) { message.value = (error as Error).message; if (isPermissionError(error)) accessDenied.value = true }
+}
 function projectsText(): string { return Array.isArray(settings['codegraph.projects']) ? settings['codegraph.projects'].join(',') : String(settings['codegraph.projects'] || '') }
 function updateProjects(value: string) { settings['codegraph.projects'] = value.split(',').map((item) => item.trim()).filter(Boolean) }
 onMounted(load)
@@ -72,7 +90,7 @@ onMounted(load)
     <div class="mx-auto max-w-5xl">
       <header class="mb-8 flex items-center justify-between">
         <div class="flex items-center gap-4"><button title="返回 Agent" class="rounded-xl bg-white p-2.5 text-stone-500 shadow-sm hover:text-stone-900" @click="router.push('/agent')"><ArrowLeftIcon class="h-5 w-5" /></button><div><p class="text-[10px] uppercase tracking-[0.25em] text-emerald-700">Control plane</p><h1 class="font-serif text-3xl">Agent 系统设置</h1></div></div>
-        <button class="rounded-xl bg-[#1e2925] px-5 py-2.5 text-sm font-medium text-[#d9ff62]" @click="saveSettings">保存配置</button>
+        <button :disabled="accessDenied || loading" :class="['rounded-xl px-5 py-2.5 text-sm font-medium', accessDenied || loading ? 'cursor-not-allowed bg-stone-300 text-stone-500' : 'bg-[#1e2925] text-[#d9ff62]']" :title="accessDenied ? '管理员账号才能保存配置' : '保存配置'" @click="saveSettings">{{ loading ? '读取中…' : '保存配置' }}</button>
       </header>
       <div class="mb-6 flex gap-1 rounded-xl bg-stone-200/70 p-1">
         <button v-for="item in [{k:'runtime',n:'运行参数'},{k:'mcp',n:'MCP 服务'},{k:'codegraph',n:'Code Graph'}]" :key="item.k" :class="['flex-1 rounded-lg px-4 py-2 text-sm', tab===item.k ? 'bg-white font-medium shadow-sm' : 'text-stone-500']" @click="tab=item.k as any">{{ item.n }}</button>
@@ -80,6 +98,7 @@ onMounted(load)
       <p v-if="message" :class="['mb-4 rounded-xl px-4 py-3 text-sm', accessDenied ? 'bg-[#fbf7ef] text-[#8b6d3f]' : 'bg-emerald-50 text-emerald-800']">{{ message }}</p>
       <p v-if="accessDenied" class="mb-4 rounded-xl border border-[#e9dfcf] bg-[#fbf7ef] px-4 py-3 text-sm text-[#8b6d3f]">当前账号没有管理员权限，配置内容仅供查看；请使用管理员账号登录后再保存。</p>
 
+      <fieldset :disabled="accessDenied" class="contents">
       <section v-if="tab==='runtime'" class="grid gap-5 md:grid-cols-2">
         <div class="grid grid-cols-3 gap-3 md:col-span-2">
           <div v-for="item in [{n:'24h 运行',v:metrics.runs || 0},{n:'工具调用',v:metrics.toolCalls || 0},{n:'首字延迟',v:`${metrics.averageFirstTokenMs || 0} ms`}]" :key="item.n" class="rounded-2xl bg-[#1e2925] px-5 py-4 text-stone-100"><p class="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70">{{ item.n }}</p><p class="mt-2 font-serif text-2xl">{{ item.v }}</p></div>
@@ -100,14 +119,15 @@ onMounted(load)
       </section>
 
       <section v-else-if="tab==='mcp'" class="space-y-5">
-        <div class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-4 font-serif text-xl">接入领域 MCP</h2><div class="grid gap-3 md:grid-cols-2"><input v-model="newServer.name" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="唯一名称，例如 knowledge" /><input v-model="newServer.title" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="显示名称" /><input v-model="newServer.url" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm md:col-span-2" placeholder="Streamable HTTP 地址" /><input v-model="newServer.token" type="password" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="服务令牌" /><input v-model="newServer.purpose" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="用途说明" /><input v-model="newServer.toolAllowlistText" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm md:col-span-2" placeholder="工具白名单，逗号分隔；留空允许全部" /></div><button class="mt-4 flex items-center gap-2 rounded-xl bg-[#1e2925] px-4 py-2 text-sm text-white" @click="addServer"><PlusIcon class="h-4 w-4" />添加</button></div>
+        <div class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-4 font-serif text-xl">接入领域 MCP</h2><div class="grid gap-3 md:grid-cols-2"><input v-model="newServer.name" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="唯一名称，例如 knowledge" /><input v-model="newServer.title" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="显示名称" /><input v-model="newServer.url" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm md:col-span-2" placeholder="Streamable HTTP 地址" /><input v-model="newServer.token" :disabled="accessDenied" type="password" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="服务令牌" /><input v-model="newServer.purpose" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="用途说明" /><input v-model="newServer.toolAllowlistText" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm md:col-span-2" placeholder="工具白名单，逗号分隔；留空允许全部" /></div><button :disabled="accessDenied" :class="['mt-4 flex items-center gap-2 rounded-xl px-4 py-2 text-sm', accessDenied ? 'cursor-not-allowed bg-stone-200 text-stone-400' : 'bg-[#1e2925] text-white']" @click="addServer"><PlusIcon class="h-4 w-4" />添加</button></div>
         <div class="grid gap-3 md:grid-cols-2"><div v-for="server in servers" :key="server.id" class="rounded-2xl bg-white p-5 shadow-sm"><div class="flex items-start gap-3"><span :class="['mt-1 h-2.5 w-2.5 rounded-full',server.status==='available'?'bg-emerald-500':'bg-amber-500']" /><div class="min-w-0 flex-1"><p class="font-medium">{{ server.title }}</p><p class="truncate text-xs text-stone-400">{{ server.url }}</p></div><label class="flex items-center gap-2 text-xs text-stone-500"><input v-model="server.enabled" type="checkbox" @change="updateServer(server)" />启用</label></div><p class="mt-4 text-xs text-stone-500">{{ server.tools?.length || 0 }} 个工具 · {{ server.latencyMs || '—' }} ms<span v-if="server.lastError" class="mt-1 block text-rose-500">{{ server.lastError }}</span></p><input :value="(server.toolAllowlist || []).join(',')" class="mt-3 w-full rounded-lg bg-stone-100 px-3 py-2 text-xs" placeholder="工具白名单（留空允许全部）" @change="changeAllowlist(server, $event)" /><div class="mt-4 flex gap-2"><button title="重新探测" class="rounded-lg bg-stone-100 p-2 hover:bg-stone-200" @click="probe(server.id)"><ArrowPathIcon class="h-4 w-4" /></button><button title="删除" class="rounded-lg bg-rose-50 p-2 text-rose-600" @click="removeServer(server.id)"><TrashIcon class="h-4 w-4" /></button></div></div></div>
       </section>
 
       <section v-else class="space-y-5">
-        <div class="rounded-2xl bg-white p-6 shadow-sm"><div class="flex items-center justify-between"><div><h2 class="font-serif text-xl">独立 Code Graph</h2><p class="mt-1 text-xs text-stone-400">从 GitLab 创建不可变快照，图数据与知识图谱隔离。</p></div><button class="rounded-xl bg-[#1e2925] px-4 py-2 text-sm text-[#d9ff62]" @click="syncCodeGraph()">同步全部</button></div><div class="mt-5 grid gap-3 md:grid-cols-2"><input v-model="settings['codegraph.gitlabUrl']" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="GitLab URL" /><input v-model="settings['codegraph.gitlabToken']" type="password" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="Token（留空保持）" /><input :value="projectsText()" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="项目 ID，逗号分隔" @input="updateProjects(($event.target as HTMLInputElement).value)" /><input v-model="settings['codegraph.branch']" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="默认分支" /></div></div>
+        <div class="rounded-2xl bg-white p-6 shadow-sm"><div class="flex items-center justify-between"><div><h2 class="font-serif text-xl">独立 Code Graph</h2><p class="mt-1 text-xs text-stone-400">从 GitLab 创建不可变快照，图数据与知识图谱隔离。</p></div><button :disabled="accessDenied || loading" :class="['rounded-xl px-4 py-2 text-sm', accessDenied || loading ? 'cursor-not-allowed bg-stone-300 text-stone-500' : 'bg-[#1e2925] text-[#d9ff62]']" :title="accessDenied ? '管理员账号才能同步' : '同步全部'" @click="syncCodeGraph()">同步全部</button></div><div class="mt-5 grid gap-3 md:grid-cols-2"><input v-model="settings['codegraph.gitlabUrl']" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="GitLab URL" /><input v-model="settings['codegraph.gitlabToken']" :disabled="accessDenied" type="password" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="Token（留空保持）" /><input :value="projectsText()" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="项目 ID，逗号分隔" @input="updateProjects(($event.target as HTMLInputElement).value)" /><input v-model="settings['codegraph.branch']" :disabled="accessDenied" class="rounded-xl bg-stone-100 px-3 py-2.5 text-sm" placeholder="默认分支" /></div></div>
         <div class="rounded-2xl bg-white p-6 shadow-sm"><h2 class="mb-4 font-serif text-xl">同步状态</h2><div class="space-y-2"><div v-for="repo in repositories" :key="repo.projectId" class="flex items-center gap-3 rounded-xl bg-stone-50 px-4 py-3"><CheckCircleIcon :class="['h-5 w-5',repo.status==='ready'?'text-emerald-600':'text-amber-500']" /><div class="min-w-0 flex-1"><p class="text-sm font-medium">{{ repo.name }}</p><p class="truncate text-xs text-stone-400">{{ repo.branch }}@{{ repo.commitSha || '等待同步' }} · {{ repo.nodeCount }} 节点</p></div><button title="同步此仓库" class="rounded-lg p-2 hover:bg-stone-200" @click="syncCodeGraph(repo.projectId)"><ArrowPathIcon class="h-4 w-4" /></button></div><p v-if="!repositories.length" class="py-8 text-center text-sm text-stone-400">尚未同步代码仓库</p></div></div>
       </section>
+      </fieldset>
     </div>
   </div>
 </template>
