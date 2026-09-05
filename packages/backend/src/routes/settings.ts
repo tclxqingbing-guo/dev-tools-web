@@ -11,6 +11,7 @@ import {
   type SettingKey,
 } from '../services/settings-store.js'
 import { getWechatAccessToken } from '../services/wechat-mini-program.js'
+import { loadAuthConfigFromDb, requireAdmin } from '../agent/security.js'
 
 export const settingsRouter: IRouter = Router()
 
@@ -75,6 +76,9 @@ settingsRouter.get('/public', async (_req, res) => {
   }
 })
 
+// 设置中心包含模型密钥、SSO 凭据和统一权限令牌，只允许管理员访问。
+settingsRouter.use(requireAdmin)
+
 settingsRouter.get('/', async (_req, res) => {
   try {
     const values: Record<string, string> = {}
@@ -120,6 +124,7 @@ settingsRouter.put('/', async (req, res) => {
       updates[rawKey as SettingKey] = ''
     }
     await setSettings(updates)
+    await loadAuthConfigFromDb()
     res.json({ success: true })
   } catch (error) {
     res.status(400).json({ message: (error as Error).message })

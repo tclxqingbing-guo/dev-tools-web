@@ -8,7 +8,7 @@ import multer from 'multer'
 import { getSettings } from '../services/settings-store.js'
 import { query, queryOne } from './db.js'
 import { probeMcp } from './mcp.js'
-import { assertAllowedServiceUrl, AUTH_SENSITIVE_SETTING_KEYS, AUTH_SETTING_ENV_MAP, AUTH_SETTING_KEYS, decryptSecret, encryptSecret, loadAuthConfigFromDb, requireAdmin, requireAuth } from './security.js'
+import { assertAllowedServiceUrl, AUTH_SENSITIVE_SETTING_KEYS, AUTH_SETTING_KEYS, decryptSecret, encryptSecret, requireAdmin, requireAuth } from './security.js'
 import type { AgentMode, AuthenticatedRequest } from './types.js'
 
 const dataRoot = path.resolve(process.env.AGENT_DATA_DIR || '/app/data/agent')
@@ -295,15 +295,7 @@ agentAdminRouter.delete('/mcp/servers/:id', async (req: AuthenticatedRequest, re
 agentAdminRouter.get('/agent/settings', async (_req, res) => {
   const rows = await query<{ key: string; value: any }>(`SELECT key,value FROM agent_setting ORDER BY key`)
   const sensitive = new Set(['search.tavilyKey', 'codegraph.gitlabToken', 'external.apiToken', ...AUTH_SENSITIVE_SETTING_KEYS])
-  const values: Record<string, unknown> = Object.fromEntries(rows.map((item) => [item.key, sensitive.has(item.key) ? '' : item.value]))
-  const booleanKeys = new Set(['sso.enabled', 'sso.cookieSecure', 'authority.enabled'])
-  const numberKeys = new Set(['sso.sessionMaxAge', 'sso.timeoutSeconds'])
-  for (const [key, envName] of Object.entries(AUTH_SETTING_ENV_MAP)) {
-    if (key in values || sensitive.has(key)) continue
-    const raw = process.env[envName] || ''
-    values[key] = booleanKeys.has(key) ? ['1', 'true', 'yes', 'on'].includes(raw.toLowerCase()) : numberKeys.has(key) ? Number(raw || 0) : raw
-  }
-  res.json(values)
+  res.json(Object.fromEntries(rows.map((item) => [item.key, sensitive.has(item.key) ? '' : item.value])))
 })
 
 agentAdminRouter.get('/agent/metrics', async (_req, res) => {
@@ -318,7 +310,7 @@ agentAdminRouter.get('/agent/metrics', async (_req, res) => {
 })
 
 agentAdminRouter.put('/agent/settings', async (req: AuthenticatedRequest, res) => {
-  const allowed = new Set(['model.name','model.temperature','model.maxTokens','search.primary','search.fallback','search.searxngUrl','search.searxngEngines','search.tavilyKey','search.maxResults','search.timeoutSeconds','search.allowedDomains','search.blockedDomains','external.apiToken','external.allowedModes','agent.maxRounds','agent.maxDurationSeconds','agent.contextWindow','sandbox.timeoutSeconds','sandbox.memoryMb','sandbox.cpus','sandbox.pids','sandbox.outputMb','codegraph.gitlabUrl','codegraph.gitlabToken','codegraph.projects','codegraph.branch', ...AUTH_SETTING_KEYS])
+  const allowed = new Set(['model.name','model.temperature','model.maxTokens','search.primary','search.fallback','search.searxngUrl','search.searxngEngines','search.tavilyKey','search.maxResults','search.timeoutSeconds','search.allowedDomains','search.blockedDomains','external.apiToken','external.allowedModes','agent.maxRounds','agent.maxDurationSeconds','agent.contextWindow','sandbox.timeoutSeconds','sandbox.memoryMb','sandbox.cpus','sandbox.pids','sandbox.outputMb','codegraph.gitlabUrl','codegraph.gitlabToken','codegraph.projects','codegraph.branch'])
   const sensitive = new Set(['search.tavilyKey', 'codegraph.gitlabToken', 'external.apiToken', ...AUTH_SENSITIVE_SETTING_KEYS])
   for (const [key, value] of Object.entries(req.body?.values || {})) {
     if (!allowed.has(key)) continue
@@ -326,7 +318,6 @@ agentAdminRouter.put('/agent/settings', async (req: AuthenticatedRequest, res) =
     const stored = sensitive.has(key) && value ? { encrypted: encryptSecret(String(value)) } : value
     await query(`INSERT INTO agent_setting(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=now()`, [key, JSON.stringify(stored)])
   }
-  await loadAuthConfigFromDb()
   await query(`INSERT INTO agent_audit_log(user_id,action) VALUES($1,'agent.settings.update')`, [user(req).id])
   res.json({ success: true })
 })

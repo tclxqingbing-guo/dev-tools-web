@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 import { isIP } from 'node:net'
 import type { NextFunction, Response } from 'express'
 import type { AgentUser, AuthenticatedRequest } from './types.js'
-import { query } from './db.js'
+import { getSetting, hasSetting, type SettingKey } from '../services/settings-store.js'
 
 const runtimeSecret = randomBytes(32).toString('hex')
 
@@ -40,18 +40,13 @@ export const AUTH_SENSITIVE_SETTING_KEYS = new Set([
 
 /** 从 Agent 设置数据库加载企业登录配置，覆盖当前进程环境变量。 */
 export async function loadAuthConfigFromDb(): Promise<void> {
-  const rows = await query<{ key: string; value: unknown }>('SELECT key,value FROM agent_setting WHERE key = ANY($1::text[])', [[...AUTH_SETTING_KEYS]])
-  for (const row of rows) {
-    const envName = AUTH_SETTING_ENV_MAP[row.key]
+  for (const [key, envName] of Object.entries(AUTH_SETTING_ENV_MAP)) {
+    if (!await hasSetting(key as SettingKey)) continue
     if (!envName) continue
     try {
-      const stored = row.value as { encrypted?: string } | string | null
-      const value = stored && typeof stored === 'object' && 'encrypted' in stored
-        ? decryptSecret(String(stored.encrypted || ''))
-        : stored == null ? '' : String(stored)
-      process.env[envName] = value
+      process.env[envName] = await getSetting(key as SettingKey)
     } catch (error) {
-      console.warn(`Auth setting ${row.key} 无法解密：${(error as Error).message}`)
+      console.warn(`Auth setting ${key} 无法读取：${(error as Error).message}`)
     }
   }
 }
