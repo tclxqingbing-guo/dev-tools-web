@@ -31,6 +31,7 @@ import { miniProgramProxyRouter } from './routes/mini-program-proxy.js'
 import { agentAuthRouter } from './agent/auth-router.js'
 import { agentAdminRouter, agentRouter } from './agent/router.js'
 import { initAgentDb } from './agent/db.js'
+import { loadAuthConfigFromDb } from './agent/security.js'
 import { codeGraphAdminRouter, codeGraphMcpRouter } from './codegraph/router.js'
 import { seedMcpServers, startAttachmentCleanup, startMcpHealthChecks } from './agent/bootstrap.js'
 import { agentOpenRouter } from './agent/open-router.js'
@@ -78,6 +79,7 @@ const jsonErrorHandler: ErrorRequestHandler = (error, req, res, next) => {
 app.use(jsonErrorHandler)
 
 initAgentDb()
+  .then(loadAuthConfigFromDb)
   .then(seedMcpServers)
   .then(() => app.listen(PORT, () => {
     startMcpHealthChecks()

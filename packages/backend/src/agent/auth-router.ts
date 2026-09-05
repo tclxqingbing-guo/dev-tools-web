@@ -33,6 +33,7 @@ agentAuthRouter.get('/me', (req: AuthenticatedRequest, res) => {
 agentAuthRouter.get('/sso/login', (req: AuthenticatedRequest, res) => {
   const baseUrl = String(process.env.SSO_BASE_URL || '').replace(/\/+$/, '')
   if (!baseUrl || process.env.SSO_ENABLED !== 'true') return void res.redirect(safeReturnUri(req, req.query.return_uri))
+  if (!process.env.SSO_CLIENT_ID || !process.env.SSO_CLIENT_SECRET) return void res.status(503).json({ detail: 'SSO 已开启但配置不完整' })
   const state = randomBytes(24).toString('base64url')
   const returnUri = safeReturnUri(req, req.query.return_uri)
   writeSession(res, { ...readSession(req), state, returnUri })
@@ -40,7 +41,7 @@ agentAuthRouter.get('/sso/login', (req: AuthenticatedRequest, res) => {
     response_type: 'code',
     scope: process.env.SSO_SCOPE || 'read',
     client_id: process.env.SSO_CLIENT_ID || '',
-    redirect_uri: process.env.SSO_REDIRECT_URI || `${origin(req)}/api/auth/sso/callback`,
+    redirect_uri: process.env.SSO_REDIRECT_URI || `${origin(req)}${process.env.SSO_CALLBACK_PATH || '/api/auth/sso/callback'}`,
     state,
     return_uri: returnUri,
   })
@@ -52,7 +53,7 @@ agentAuthRouter.get('/sso/callback', async (req: AuthenticatedRequest, res) => {
     const session = readSession(req)
     if (!req.query.code || !session.state || session.state !== req.query.state) return void res.status(400).send('SSO state 校验失败')
     const baseUrl = String(process.env.SSO_BASE_URL || '').replace(/\/+$/, '')
-    const redirectUri = process.env.SSO_REDIRECT_URI || `${origin(req)}/api/auth/sso/callback`
+    const redirectUri = process.env.SSO_REDIRECT_URI || `${origin(req)}${process.env.SSO_CALLBACK_PATH || '/api/auth/sso/callback'}`
     const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

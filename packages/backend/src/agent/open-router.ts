@@ -3,7 +3,7 @@ import type { IRouter } from 'express'
 import { Router } from 'express'
 import { getSettings } from '../services/settings-store.js'
 import { query, queryOne } from './db.js'
-import { decryptSecret } from './security.js'
+import { AUTH_SETTING_KEYS, decryptSecret } from './security.js'
 import type { AgentMode } from './types.js'
 
 const modes = new Set<AgentMode>(['auto', 'general', 'knowledge', 'agent'])
@@ -55,6 +55,7 @@ agentOpenRouter.post('/chat/completions', async (req, res) => {
   const settingRows = await query<{ key: string; value: any }>(`SELECT key,value FROM agent_setting`)
   const settings = Object.fromEntries(settingRows.map((item) => [item.key, item.value]))
   if (settings['search.tavilyKey']?.encrypted) settings['search.tavilyKey'] = decryptSecret(settings['search.tavilyKey'].encrypted)
+  for (const key of AUTH_SETTING_KEYS) delete settings[key]
   const controller = new AbortController()
   res.on('close', () => { if (!res.writableEnded) controller.abort() })
   await query(`INSERT INTO agent_audit_log(user_id,action,target,detail) VALUES($1,'agent.open_api.run',$2,$3)`, [userId, runId, JSON.stringify({ mode })])

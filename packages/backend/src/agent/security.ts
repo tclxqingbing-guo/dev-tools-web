@@ -2,8 +2,59 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 import { isIP } from 'node:net'
 import type { NextFunction, Response } from 'express'
 import type { AgentUser, AuthenticatedRequest } from './types.js'
+import { query } from './db.js'
 
 const runtimeSecret = randomBytes(32).toString('hex')
+
+/** Agent 系统设置中可覆盖的企业登录与统一权限环境变量。 */
+export const AUTH_SETTING_ENV_MAP: Record<string, string> = {
+  'sso.enabled': 'SSO_ENABLED',
+  'sso.baseUrl': 'SSO_BASE_URL',
+  'sso.clientId': 'SSO_CLIENT_ID',
+  'sso.clientSecret': 'SSO_CLIENT_SECRET',
+  'sso.sessionSecret': 'SSO_SESSION_SECRET',
+  'sso.publicOrigin': 'SSO_PUBLIC_ORIGIN',
+  'sso.redirectUri': 'SSO_REDIRECT_URI',
+  'sso.callbackPath': 'SSO_CALLBACK_PATH',
+  'sso.cookieSecure': 'SSO_COOKIE_SECURE',
+  'sso.cookieName': 'SSO_COOKIE_NAME',
+  'sso.sessionMaxAge': 'SSO_SESSION_MAX_AGE',
+  'sso.sameSite': 'SSO_SAME_SITE',
+  'sso.scope': 'SSO_SCOPE',
+  'sso.timeoutSeconds': 'SSO_TIMEOUT_SECONDS',
+  'authority.enabled': 'AUTHORITY_ENABLED',
+  'authority.baseUrl': 'AUTHORITY_BASE_URL',
+  'authority.appKey': 'AUTHORITY_APP_KEY',
+  'authority.appCode': 'AUTHORITY_APP_CODE',
+  'authority.labradorToken': 'AUTHORITY_LABRADOR_TOKEN',
+  'authority.tid': 'AUTHORITY_TID',
+  'authority.allowedAdminRoleNames': 'AUTHORITY_ALLOWED_ADMIN_ROLE_NAMES',
+  'authority.allowedAdminRoleIds': 'AUTHORITY_ALLOWED_ADMIN_ROLE_IDS',
+  'authority.adminUserIds': 'AUTH_ADMIN_USER_IDS',
+}
+
+export const AUTH_SETTING_KEYS = new Set(Object.keys(AUTH_SETTING_ENV_MAP))
+export const AUTH_SENSITIVE_SETTING_KEYS = new Set([
+  'sso.clientSecret', 'sso.sessionSecret', 'authority.labradorToken',
+])
+
+/** 从 Agent 设置数据库加载企业登录配置，覆盖当前进程环境变量。 */
+export async function loadAuthConfigFromDb(): Promise<void> {
+  const rows = await query<{ key: string; value: unknown }>('SELECT key,value FROM agent_setting WHERE key = ANY($1::text[])', [[...AUTH_SETTING_KEYS]])
+  for (const row of rows) {
+    const envName = AUTH_SETTING_ENV_MAP[row.key]
+    if (!envName) continue
+    try {
+      const stored = row.value as { encrypted?: string } | string | null
+      const value = stored && typeof stored === 'object' && 'encrypted' in stored
+        ? decryptSecret(String(stored.encrypted || ''))
+        : stored == null ? '' : String(stored)
+      process.env[envName] = value
+    } catch (error) {
+      console.warn(`Auth setting ${row.key} 无法解密：${(error as Error).message}`)
+    }
+  }
+}
 
 function envBool(name: string, fallback = false): boolean {
   const value = String(process.env[name] || '').trim().toLowerCase()
@@ -37,11 +88,14 @@ export function writeSession(res: Response, value: Record<string, unknown>): voi
   const cookie = `${payload}.${sign(payload)}`
   const name = process.env.SSO_COOKIE_NAME || 'bx_tools_session'
   const secure = envBool('SSO_COOKIE_SECURE') ? '; Secure' : ''
-  res.setHeader('Set-Cookie', `${name}=${encodeURIComponent(cookie)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${6 * 86400}${secure}`)
+  const sameSite = process.env.SSO_SAME_SITE || 'Lax'
+  const maxAge = Number(process.env.SSO_SESSION_MAX_AGE || 6 * 86400)
+  res.setHeader('Set-Cookie', `${name}=${encodeURIComponent(cookie)}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure}`)
 }
 
 export function clearSession(res: Response): void {
-  res.setHeader('Set-Cookie', `${process.env.SSO_COOKIE_NAME || 'bx_tools_session'}=; Path=/; HttpOnly; Max-Age=0`)
+  const sameSite = process.env.SSO_SAME_SITE || 'Lax'
+  res.setHeader('Set-Cookie', `${process.env.SSO_COOKIE_NAME || 'bx_tools_session'}=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0`)
 }
 
 /** 解析并校验签名会话。 */
