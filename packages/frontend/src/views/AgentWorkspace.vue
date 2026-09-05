@@ -170,21 +170,20 @@ onMounted(async () => {
           </div>
         </section>
 
-        <footer class="shrink-0 px-6 pb-5">
-          <div class="mx-auto max-w-3xl">
+        <footer class="sticky bottom-0 z-20 shrink-0 border-t border-[#e4e5e1] bg-[#f6f6f4]/95 px-6 py-3 backdrop-blur">
+          <div class="w-full">
             <div v-if="attachments.length" class="mb-2 flex gap-2 overflow-x-auto">
               <a v-for="file in attachments" :key="file.id" :href="`/api/agent/attachments/${file.id}`" class="flex shrink-0 items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-white" :title="`下载 ${file.filename}`"><DocumentPlusIcon class="h-3.5 w-3.5 text-emerald-700" />{{ file.filename }}</a>
             </div>
             <p v-if="error" class="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ error }}</p>
-            <div class="rounded-2xl bg-white p-2 shadow-[0_14px_40px_rgba(38,42,36,0.12)] ring-1 ring-stone-200">
-              <textarea v-model="prompt" rows="2" class="max-h-40 min-h-[64px] w-full resize-none bg-transparent px-3 py-2 text-sm leading-6 outline-none placeholder:text-stone-400" placeholder="描述问题，或附上文档后告诉我需要完成什么…" :disabled="streaming" @keydown.enter.exact.prevent="send" />
-              <div class="flex items-center justify-between px-1 pb-1">
-                <div><input ref="fileInput" type="file" multiple class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.html,.png,.jpg,.jpeg,.webp,.tif,.tiff" @change="uploadFiles" /><button title="添加会话附件" class="rounded-lg p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700" @click="fileInput?.click()"><PaperClipIcon class="h-4 w-4" /></button></div>
+            <div class="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 shadow-[0_8px_24px_rgba(38,42,36,0.08)] ring-1 ring-[#e0e1dd]">
+              <input ref="fileInput" type="file" multiple class="hidden" accept=".pdf,.docx,.pptx,.txt,.md,.html,.png,.jpg,.jpeg,.webp,.tif,.tiff" @change="uploadFiles" /><button title="添加会话附件" class="shrink-0 rounded-lg p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700" @click="fileInput?.click()"><PaperClipIcon class="h-4 w-4" /></button>
+              <textarea v-model="prompt" rows="1" class="h-10 max-h-28 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2 py-2 text-sm leading-6 outline-none placeholder:text-stone-400" placeholder="描述问题，或附上文档后告诉我需要完成什么…" :disabled="streaming" @keydown.enter.exact.prevent="send" />
+              <div class="flex shrink-0 items-center">
                 <button v-if="streaming" title="停止生成" class="grid h-9 w-9 place-items-center rounded-xl bg-stone-800 text-white hover:bg-stone-700" @click="cancel"><StopIcon class="h-4 w-4" /></button>
                 <button v-else title="发送" :disabled="!prompt.trim()" class="grid h-9 w-9 place-items-center rounded-xl bg-[#66796d] text-white disabled:opacity-30" @click="send"><ArrowUpIcon class="h-4 w-4" /></button>
               </div>
             </div>
-            <p class="mt-2 text-center text-[10px] tracking-wide text-stone-400">工具执行在隔离环境中进行 · 重要结论请结合来源复核</p>
           </div>
         </footer>
       </main>
