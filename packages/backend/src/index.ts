@@ -17,7 +17,7 @@ for (const p of candidates) {
   }
 }
 
-import express from 'express'
+import express, { type ErrorRequestHandler } from 'express'
 import cors from 'cors'
 import { aiRouter } from './routes/ai.js'
 import { notesRouter } from './routes/notes.js'
@@ -62,6 +62,20 @@ app.use('/api/open/agent/v1', agentOpenRouter)
 app.use('/api/admin', agentAdminRouter)
 app.use('/api/admin/codegraph', codeGraphAdminRouter)
 app.use('/api/mcp/codegraph', codeGraphMcpRouter)
+
+/** 将请求体解析错误统一转换为 JSON，方便开放 API 客户端稳定处理。 */
+const jsonErrorHandler: ErrorRequestHandler = (error, req, res, next) => {
+  if (error instanceof SyntaxError && 'body' in error) {
+    if (req.originalUrl.startsWith('/api/open/agent/')) {
+      res.status(400).json({ error: { message: '请求 JSON 格式无效', type: 'invalid_request_error' } })
+    } else {
+      res.status(400).json({ detail: '请求 JSON 格式无效' })
+    }
+    return
+  }
+  next(error)
+}
+app.use(jsonErrorHandler)
 
 initAgentDb()
   .then(seedMcpServers)
